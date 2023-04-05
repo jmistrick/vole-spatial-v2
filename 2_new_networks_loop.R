@@ -60,7 +60,6 @@ params_summary <- readRDS(file = here("params_summary_04.04.23.rds"))
 
 ##--------------- (in a loop) GENERATE OVERLAP NETWORK ---------------------
 
-
 # overlap_network_list <- list()
 #
 # for(i in 1:length(sitemonth_list)){
@@ -164,14 +163,15 @@ overlap_network_list <- readRDS(here("overlap_network_list_04.05.23.RDS"))
 
 ##-------------- PLOTTING (to keel you!) ----------------
 
-#save each list element as its own list
-for(i in 1:length(overlap_network_list)){
-  data <- overlap_network_list[[i]] #pull the 1e list elements (sites)
-  assign(paste(names(overlap_network_list)[i]), data) #name it as the site name
-}
-
 
 # ########## ONE SITE ACROSS MULTIPLE MONTHS ###############
+#
+# #save each list element as its own list
+# for(i in 1:length(overlap_network_list)){
+#   data <- overlap_network_list[[i]] #pull the 1e list elements (sites)
+#   assign(paste(names(overlap_network_list)[i]), data) #name it as the site name
+# }
+#
 #
 # #save multiple plots using par(mfrow)
 # #https://stackoverflow.com/questions/18584722/save-multiple-plots-in-r-as-a-jpg-file-how
@@ -201,7 +201,6 @@ for(i in 1:length(overlap_network_list)){
 # dev.off()
 #
 ################################################################
-
 
 
 
@@ -238,27 +237,4 @@ for(i in 1:length(overlap_network_list)) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-##--------------------------------------------------------------
-
-#plot adj matrix for network
-g <- graph_from_adjacency_matrix(
-  overlap_network_sep,
-  mode = c("undirected"),
-  weighted = TRUE,
-  diag = FALSE)
-
-g2 <- delete.edges(g, which(E(g)$weight<0.05))
-
-plot(g2, vertex.size=5, vertex.label=NA)
-
+##----------------------- CALCULATE NETWORK METRICS ---------------------------------
