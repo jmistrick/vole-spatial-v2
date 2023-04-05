@@ -13,11 +13,25 @@ rm(list = ls())
 #load the fulltrap dataset (make sure it's the most recent version)
   ## NOTE ## all DP, DT, or S animals are still in the fulltrap dataset
 fulltrap <- readRDS(file = "fulltrap_06.28.22.rds") %>%
+  filter(month != "may") %>% #drop may data since not all sites had captures
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) #remove animals with sex=NA (since we can't assign then a HR)
 
-########## LATER: will want to drop all the May data:
-# filter(month != "may") %>% #drop may data since not all sites had captures
-########## but that will require going back to 01_data_cleaning and changing the factor levels to remove "may"
+fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
+fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life =="1") %>% nrow()
+
+
+fulltrap <- fulltrap %>%
+  filter(mass >= 15 |
+           per=="1" | nip=="1" | preg=="1" |
+           test=="1") %>%
+  filter(caps_per_life > 1)
+
+largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
+largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life =="1") %>% nrow()
+
+
+##### CURRENTLY FUDGING AROUND WITH THIS TO KEEP LARGE INDIVIDUALS (more like to be resident, have many captures, all that)
 
 #pull all the traps and their x, y coordinates, save as df with (trapID, x, y)
 traps <- fulltrap %>% group_by(trap) %>% slice(1) %>%
@@ -174,7 +188,9 @@ row.names(params_summary) <- NULL
 ##### OUTPUT: PARAMS_SUMMARY has the "a" and "b" parameters, calculated per season, per treatment, per sex
   ### params_summary has columns "sts" "a" and "b"
 
+# #save to RDS file
+# saveRDS(params_summary, file = here("params_summary_04.04.23.rds"))
+
+
 #save to RDS file
-saveRDS(params_summary, file = here("params_summary_04.04.23.rds"))
-
-
+saveRDS(params_summary, file = here("params_LARGETRAP_summary_04.05.23.rds"))
