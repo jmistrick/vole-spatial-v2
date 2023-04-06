@@ -1,3 +1,12 @@
+###### UNLESS YOU MAKE CHANGES: Don't need to run this code, params_summary was saved to RDS on 4.4.23
+
+
+############ BASED ON THE FINDINGS FROM "...compare_sextrt_byseason.R"
+    ##### YES, it does make sense to calculate different params for males/females and by trt in summer/fall
+    ##### HOWEVER, what is less clear to me is whether I should do this in season-specific models
+      ## with both sexes and all four treatments (like how I tested it)
+      ## or if it's okay to do all piece-mealy like I did here (which is kind of how W&F did theirs)
+
 # load packages
 library(here)
 library(tidyverse)
@@ -17,21 +26,23 @@ fulltrap <- readRDS(file = "fulltrap_06.28.22.rds") %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) #remove animals with sex=NA (since we can't assign then a HR)
 
-fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
-fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life =="1") %>% nrow()
+# fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
+# #mean captures/life = 2.75
+# fulltrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life=="1") %>% nrow()
+# #297 animals only caught once
 
 
-fulltrap <- fulltrap %>%
-  filter(mass >= 15 |
-           per=="1" | nip=="1" | preg=="1" |
-           test=="1") %>%
-  filter(caps_per_life > 1)
+# ##### CURRENTLY FUDGING AROUND WITH THIS TO KEEP LARGE INDIVIDUALS (more like to be resident, have many captures, all that)
+# #### LARGETRAP - a variant only looking at breeding, "adult" sized animals
+# fulltrap <- fulltrap %>%
+#   filter(mass >= 15 |
+#            per=="1" | nip=="1" | preg=="1" |
+#            test=="1") %>% #mass should probably be 17-17.5 based on the literature...
+#   filter(caps_per_life > 1)
+#
+# largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
+# largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life =="1") %>% nrow()
 
-largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% summarise(mean = mean(caps_per_life))
-largetrap %>% group_by(tag) %>% slice(1) %>% ungroup() %>% filter(caps_per_life =="1") %>% nrow()
-
-
-##### CURRENTLY FUDGING AROUND WITH THIS TO KEEP LARGE INDIVIDUALS (more like to be resident, have many captures, all that)
 
 #pull all the traps and their x, y coordinates, save as df with (trapID, x, y)
 traps <- fulltrap %>% group_by(trap) %>% slice(1) %>%
@@ -188,9 +199,9 @@ row.names(params_summary) <- NULL
 ##### OUTPUT: PARAMS_SUMMARY has the "a" and "b" parameters, calculated per season, per treatment, per sex
   ### params_summary has columns "sts" "a" and "b"
 
-# #save to RDS file
-# saveRDS(params_summary, file = here("params_summary_04.04.23.rds"))
-
-
 #save to RDS file
-saveRDS(params_summary, file = here("params_LARGETRAP_summary_04.05.23.rds"))
+saveRDS(params_summary, file = here("params_summary_04.04.23.rds"))
+
+
+# # LARGETRAP VARIATION - save to RDS file
+# saveRDS(params_summary, file = here("params_LARGETRAP_summary_04.05.23.rds"))
