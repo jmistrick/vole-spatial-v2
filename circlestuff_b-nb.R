@@ -26,33 +26,48 @@ rm(list = ls())
 ####----------- LOAD DATA -----------------
 
 #params
-params21.22 <- readRDS(here("bnb_params21.22.rds"))
+# params21.22 <- readRDS(here("bnb_params21.22.rds"))
 
-#centroids
-centroids21.22 <- readRDS(here("bnb_centroids21.22.rds")) %>%
-  rename(breeder = Breeder,
-         tag = Tag_ID)
+params21 <- readRDS(here("params21_stsb.rds"))
+
+# #SEASONAL centroids
+# centroids21.22 <- readRDS(here("bnb_centroids21.22.rds")) %>%
+#   rename(breeder = Breeder,
+#          tag = Tag_ID)
+
+#MONTHLY centroids
+centroids21 <- readRDS(here("centroids21_monthly_bnb.rds")) %>% rename(tag = Tag_ID)
 
 #load fulltrap data - pull tag, month, site
 ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-tagmonth21 <- ft21 %>% select(c(year, season, site, month, tag)) %>%
+trapdat21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   filter(month != "may") %>%
-  group_by(tag, month) %>% slice(1)
+  group_by(tag, month) %>% slice(1) %>%
+  drop_na(sex) %>% drop_na(season_breeder)
 
-ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
-tagmonth22 <- ft22 %>% select(c(year, season, site, month, tag)) %>%
-  filter(month != "may") %>%
-  group_by(tag, month) %>% slice(1)
+# ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
+# trapdat22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+#   filter(month != "may") %>%
+#   group_by(tag, month) %>% slice(1) %>%
+#   drop_na(sex) %>% drop_na(season_breeder)
 
-ft21.22 <- rbind(ft21, ft22)
-tagsampid21.22 <- ft21.22 %>% select(year, month, tag, samp_id) %>%
-  distinct(tag, samp_id, .keep_all = TRUE) #remove duplicate rows
-tagmonth21.22 <- rbind(tagmonth21, tagmonth22)
+# ft21.22 <- rbind(ft21, ft22)
+# tagsampid21.22 <- ft21.22 %>% select(year, month, tag, samp_id) %>%
+#   distinct(tag, samp_id, .keep_all = TRUE) #remove duplicate rows
+# tagmonth21.22 <- rbind(tagmonth21, tagmonth22)
 
-circleparts <- left_join(centroids21.22, params21.22, by=c("year", "season", "trt", "sex", "breeder"))
+# circleparts <- left_join(centroids21.22, params21.22, by=c("year", "season", "trt", "sex", "breeder"))
 
-circles21.22 <- left_join(tagmonth21.22, circleparts, by=c("year", "season", "tag")) %>%
-  drop_na(x) %>% drop_na(a) %>% #drop rows without circle parameters (may animals, animals w/o sex, breeder, trap etc)
+# circles21.22 <- left_join(tagmonth21.22, circleparts, by=c("year", "season", "tag")) %>%
+#   drop_na(x) %>% drop_na(a) %>% #drop rows without circle parameters (may animals, animals w/o sex, breeder, trap etc)
+#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
+
+
+circles21 <- left_join(centroids21, trapdat21, by=c("tag", "month", "site")) %>%
+  unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor
+  separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
+  unite(trt, food_trt, helm_trt) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
 
 ####### I SHOULD DEFINTELY CONFIRM THIS CALCULATION WITH SOMEONE BECAUSE I'M RULL DUMB AT MATH ################
@@ -138,14 +153,14 @@ puuv <- puuv_data %>% group_by(year, tag) %>%
 
 
 
-#create the 'circles' dataframes with all the circle dimensions and infection colors
-circles21 <- circles21.22 %>% filter(year=="2021") %>%
-  left_join(puuv, by=c("year", "month", "tag")) %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
-
-circles22 <- circles21.22 %>% filter(year=="2022") %>%
-  left_join(puuv, by=c("year", "month", "tag")) %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
+# #create the 'circles' dataframes with all the circle dimensions and infection colors
+# circles21 <- circles21.22 %>% filter(year=="2021") %>%
+#   left_join(puuv, by=c("year", "month", "tag")) %>%
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
+#
+# circles22 <- circles21.22 %>% filter(year=="2022") %>%
+#   left_join(puuv, by=c("year", "month", "tag")) %>%
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
 
 
 
@@ -223,7 +238,7 @@ library(gridExtra)
 
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("ERRBODYcircles_", "rad0.01_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("ERRBODYcircles_monthlycentroids_", "rad0.01_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -236,6 +251,7 @@ for(i in 1:length(circles21_list)) {
     p[[j]] <- data %>%
       ggplot() +
       geom_point(aes(x=x, y=y, color=sex)) +
+      xlim(-3,13.5) + ylim(-3,13.5) +
       geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=sex), alpha=0.5) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
                 fill=NA, alpha = 0.4, color = "black", linetype=2) +
