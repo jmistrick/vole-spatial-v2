@@ -4,10 +4,13 @@
 ## but only with animals that were reproductively active
 ## 5/11/23 wishing I had a margarita in hand
 
+## lol jk - the models were goofy because the juvs don't move / are only ever caught once...
+## but I rewrote this code on 6/6 in a slightly different way because I'm an idiot and didn't realize I still had this
 
-# data <- readRDS(here("fulltrap21_05.10.23.rds"))
+
+data <- readRDS(here("fulltrap21_05.10.23.rds"))
 # data <- readRDS(here("fulltrap22_05.10.23.rds"))
-# params_file = "params22.rds"
+params_file = "params21_stsb.rds"
 
 ## Function for generating the a and b parameters by season/trt/sex to define the distributions for vole HRs
 ## Inputs: data = FULL fulltrap dataframe that contains all capture data for a given year
@@ -225,11 +228,11 @@ params_list <- list()
 
   #collapse params_list_summary into a df
   params_summary <- do.call(rbind.data.frame, params_list_summary) %>%
-    unite("sts", season, trt, sex)
+    unite("stsb", season, trt, sex, season_breeder)
   row.names(params_summary) <- NULL
 
   ##### OUTPUT: PARAMS_SUMMARY has the "a" and "b" parameters, calculated per season, per treatment, per sex
-  ### params_summary has columns "sts" "a" and "b"
+  ### params_summary has columns "stsb" "a" and "b"
 
   #save to RDS file
   saveRDS(params_summary, file = here(params_file))
@@ -245,6 +248,13 @@ params_list <- list()
 ##          networks_file = file name and extension in "" for the output file of adjacency matrices
 ## Output: list (saved to rds file) of all sites, months and an adjacency matrix for each of overlaps between voles
 
+#clear environment
+rm(list = ls())
+
+ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+data <- ft21
+params_file <- "params21_stsb.rds"
+networks_file <- "overlapnet21_stsb.rds"
 
 create_overlap_networks <- function(data, params_file, networks_file){
 
@@ -255,7 +265,10 @@ create_overlap_networks <- function(data, params_file, networks_file){
     filter(month != "may") %>% #drop may data since not all sites had captures
     mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
     drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
-    unite("sts", season, trt, sex, remove=FALSE) #add sts column to match params_summary
+    drop_na(season_breeder) %>% #remove animals with season_breeder
+    unite("stsb", season, trt, sex, season_breeder, remove=FALSE) #add stsb column to match params_summary
+
+  ##KEEPING BREEDERS AND NON-BREEDERS!
 
   #pull all the traps and their x, y coordinates, save as df with (trapID, x, y)
   traps <- fulltrap %>% group_by(trap) %>% slice(1) %>%
@@ -311,13 +324,13 @@ create_overlap_networks <- function(data, params_file, networks_file){
       print(names(sitemonth_list[[i]][j])) #print the month
 
       data <- sitemonth_list[[i]][[j]] %>%
-        select(tag, sts, trap, x, y) %>%
+        select(tag, stsb, trap, x, y) %>%
         group_by(tag, trap) %>%
         mutate(Det.count = length(tag)) %>% slice(1) %>% #Det.count is number of times animal was in that trap
         ungroup()
 
       tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
-      tagsts <- data %>% group_by(tag) %>% slice(1) %>% select(tag, sts) #all tags with their STS (season/trt/sex)
+      tagstsb <- data %>% group_by(tag) %>% slice(1) %>% select(tag, stsb) #all tags with their STSB (season/trt/sex/breeder)
 
       # skip creating network if there are 0 or 1 animals
       if(nrow(tags)=="0" | nrow(tags)=="1") {next}
@@ -330,16 +343,18 @@ create_overlap_networks <- function(data, params_file, networks_file){
       #new column of Det.count - number of times animal was captured in that trap (0-4 in a trapping occasion)
       fulldata <- cbind(tags_rep, traps_rep) %>%
         left_join(data, by=c("tag", "trap", "x", "y")) %>%
-        group_by(tag) %>% fill(sts, .direction="downup") %>%
+        group_by(tag) %>% fill(stsb, .direction="downup") %>%
         mutate(Det.count = replace_na(Det.count, 0),
                Det.obs = ifelse(Det.count==0, 0, 1)) %>%
         arrange(tag, trap) %>%
-        select(tag, sts, x, y, Det.obs, Det.count) %>%
+        select(tag, stsb, x, y, Det.obs, Det.count) %>%
         rename(x.trap = x,
                y.trap = y,
                Tag_ID = tag)
 
       #----------------------- 3. Generating overlap network  ------------------------------#
+
+      ### MONTHLY CENTRIODS with SEASONAL A B PARAMS
 
       # Recalculating (weighted) centroids
       # Weighted because a trap in which an individual was caught multiple times will have a greater influence on its centroid than a trap in which it was caught only once
@@ -350,7 +365,7 @@ create_overlap_networks <- function(data, params_file, networks_file){
       matrix_dists_real2<-matrix_dists_real2[,-7] #drops the Det.count2 column
       x <- sapply(by(matrix_dists_real2$x.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
       y <- sapply(by(matrix_dists_real2$y.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
-      obs_centroids <- data.frame(Tag_ID=tagsts$tag, sts=tagsts$sts)
+      obs_centroids <- data.frame(Tag_ID=tagstsb$tag, stsb=tagstsb$stsb)
       obs_centroids$x <- x[match(obs_centroids$Tag_ID,names(x))]
       obs_centroids$y <- y[match(obs_centroids$Tag_ID,names(y))]
 
@@ -366,14 +381,14 @@ create_overlap_networks <- function(data, params_file, networks_file){
 
       # Calculating total number of detections per individual
       ### TBH Janine isn't sure this is needed because it doesn't appear to be used anywhere, but a good check I guess
-      a <- tapply(matrix_dists_obs$Det.count, list(matrix_dists_obs$Tag_ID), sum)
-      matrix_dists_obs$Det.count.total <- a[match(matrix_dists_obs$Tag_ID, names(a))]
+      # a <- tapply(matrix_dists_obs$Det.count, list(matrix_dists_obs$Tag_ID), sum)
+      # matrix_dists_obs$Det.count.total <- a[match(matrix_dists_obs$Tag_ID, names(a))]
 
       # Estimating home range profiles (negative sigmoidal curves) done separately by season/trt -> params_summary file
 
       # Generating overlap network
-      as <- params_summary$a[match(obs_centroids$sts,params_summary$sts)]
-      bs <- params_summary$b[match(obs_centroids$sts,params_summary$sts)]
+      as <- params_summary$a[match(obs_centroids$stsb,params_summary$stsb)]
+      bs <- params_summary$b[match(obs_centroids$stsb,params_summary$stsb)]
 
       overlap_network_sep <- get_network_2D(obs_centroids$x[which(!is.na(obs_centroids$x))], obs_centroids$y[which(!is.na(obs_centroids$y))],as,bs)
       rownames(overlap_network_sep)=colnames(overlap_network_sep)=na.omit(obs_centroids)$Tag_ID
@@ -417,7 +432,9 @@ create_overlap_networks <- function(data, params_file, networks_file){
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
 
-data <- ft22
+# data <- ft21
+# networks_file <- "overlapnet21_stsb.rds"
+# netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
