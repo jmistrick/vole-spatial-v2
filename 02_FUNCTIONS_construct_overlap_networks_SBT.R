@@ -251,14 +251,14 @@ params_list <- list()
 ##          networks_file = file name and extension in "" for the output file of adjacency matrices
 ## Output: list (saved to rds file) of all sites, months and an adjacency matrix for each of overlaps between voles
 
-#clear environment
-rm(list = ls())
-
-ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-data <- ft21
-params_file <- "params21_stsb.rds"
-networks_file <- "overlapnet21_stsb.rds"
-centroids_file <- "centroids21_monthly_bnb.rds"
+# #clear environment
+# rm(list = ls())
+#
+# ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+# data <- ft21
+# params_file <- "params21_stsb.rds"
+# networks_file <- "overlapnet21_stsb.rds"
+# centroids_file <- "centroids21_monthly_bnb.rds"
 
 create_overlap_networks <- function(data, params_file, centroids_file, networks_file){
 
@@ -468,9 +468,9 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
 
-data <- ft21
-networks_file <- "overlapnet21_stsb.rds"
-netmets_file <- "netmets21_stsb.rds"
+# data <- ft21
+# networks_file <- "overlapnet21_stsb.rds"
+# netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
