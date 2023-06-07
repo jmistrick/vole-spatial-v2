@@ -1,3 +1,7 @@
+#### soooo this code does exactly the same thing as '02_FUNCTIONS_construct_overlap_networks_SBT.R' ...
+    # I just made that one a month previous and couldn't find it yesterday when I made this code *facepalm*
+    # it's fine. I'll just defend never
+
 ### GENERATE PARAMS for M / F breeders, non breeders in summer and fall
 
 
