@@ -432,9 +432,9 @@ create_overlap_networks <- function(data, params_file, networks_file){
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
 
-# data <- ft21
-# networks_file <- "overlapnet21_stsb.rds"
-# netmets_file <- "netmets21_stsb.rds"
+data <- ft21
+networks_file <- "overlapnet21_stsb.rds"
+netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
@@ -468,7 +468,7 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
     #for each site
     print(names(overlap_network_list[i]))
-    site.id <- names(overlap_network_list[i])
+    site.id <- names(overlap_network_list[6])
 
     site <- list()
 
@@ -489,35 +489,29 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
       month <- rep(names(overlap_network_list[[i]])[j],length(ids)) #capture month
 
-      # ### FOR ASSORTATIVITY
-      # #filter tag_sex for only ids caught this site/occ
-      # ids_sex <- tag_sex %>% filter(tag %in% ids)
-      # #add attribute of sex to inet
-      # inet <- set.vertex.attribute(inet, "sex", index=V(inet), as.factor(ids_sex$sex))
-
       #dataframe to hold results per month
       site[[j]] <- data.frame(ids, month)
 
       #network metrics to calculate
       site[[j]]$wt.deg <- igraph::strength(inet) #this is the sum of all degree weights for a node
       # site[[j]]$norm.wt.deg <- (igraph::strength(inet))/((igraph::gorder(inet))-1) #your strength/(total nodes-you)
-      site[[j]]$avg.wt.deg <- rep(mean(site[[j]]$wt.deg), length(ids)) #calculate average wt degree for a site/occasion
-
-      ####### N COMPONENTS ISN'T WORKING RN
-      # site[[j]]$n.component <- rep(igraph::count_components(inet), length(ids))
+      # site[[j]]$avg.wt.deg <- rep(mean(site[[j]]$wt.deg), length(ids)) #calculate average wt degree for a site/occasion
 
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
       # site[[j]]$wt.n.edge <- rep(sum(E(inet)$weight), length(ids)) ##### THIS IS WEIGHTED #####
 
-      # ### FOR ASSORTATIVITY
-      # site[[j]]$assort.sex <- rep(igraph::assortativity_nominal(inet, as.factor(V(inet)$sex), directed=FALSE), length(ids))
-      ######## ASSORTATIVITY BY WEIGHTED DEGREE WASN'T WORKING EITHER
+      ####### N COMPONENTS ISN'T WORKING RN
+      # site[[j]]$n.component <- rep(igraph::count_components(inet), length(ids))
+
+      ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - using assortnet in separate script
 
 
       ###### Calculate Male-degree, Female-degree #########
 
+      ###### Calculate Breeder-degree, Nonbreeder-degree #########
+
       #make a (new) network from the adj matrix
-      g <- graph.adjacency(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
+      g <- graph_from_adjacency_matrix(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
           #technically, our adj matrix is symmetrical so the network is undirected,
           #BUT because I want count the number of ties going in/out from a given node,
           #So I need to have all the 'out' ties listed in one column of the edgelist (so effectively a directed edgelist)
@@ -531,12 +525,16 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       metadata <- data %>% #starts with fulltrap, need to get down to a 'traits' version
         filter(site==site.id & month==month.id) %>%
         group_by(tag) %>% slice(1) %>% #one entry per vole per month
-        drop_na(sex) #didn't build networks with animals with no sex
+        drop_na(sex) %>% #didn't build networks with animals with no sex
+        drop_na(season_breeder) #didn't build networks with animals with no breeder status
 
       #set "sex" as a vertex attribute
       g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
+      #set "breeder" as a vertex attribute
+      g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=metadata$season_breeder)
       #save vectors
       # focal_sex <- get.vertex.attribute(g, "sex") #female is 1, male is 2
+      # focal_breed <- get.vertex.attribute(g, "breeder") #breeder is 1, nonbreeder is 2
       focal_id <- get.vertex.attribute(g, "name")
 
       ## code from Matt M-S for male strength/female strength
@@ -546,12 +544,22 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*weight_to)) #this need to be mode="OUT" (the "to" individual)
       degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*weight_to)) #this need to be mode="OUT"
 
+      ## code from Matt M-S for breeder/nonbreeder strength
+      breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,2]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
+      degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*weight_to)) #this need to be mode="OUT" (the "to" individual)
+      degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*weight_to)) #this need to be mode="OUT"
+
+      #####-------------------------------------
 
       #network metrics to calculate
       site[[j]]$focal_id <- focal_id
       # site[[j]]$focal_sex <- focal_sex
       site[[j]]$F.deg <- degree_to_F
       site[[j]]$M.deg <- degree_to_M
+      site[[j]]$b.deg <- degree_to_b
+      site[[j]]$nb.deg <- degree_to_nb
 
       # output <- as.data.frame(cbind(focal_id, focal_sex, degree_to_F, degree_to_M))
 
