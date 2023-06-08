@@ -1,3 +1,7 @@
+############### this is for the season-trt, using only breeders version #####################
+######## as of 6.8, Janine added in the nonbreeders so made a new version of this #############
+## and I think this version is now relegated to the graveyard of steps along the way #########
+
 
 # load packages
 library(here)
