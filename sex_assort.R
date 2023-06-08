@@ -1,10 +1,9 @@
 #clear environment
 rm(list = ls())
 
-ft21 <- readRDS(here("fulltrap21_05.10.23.rds")) %>% ###### edit on 5/11 - ONLY breeders, add this to cleaning if I like it
-  filter(season_breeder=="breeder")
+ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
 data = ft21
-networks_file = "overlapnets21.rds"
+networks_file = "overlapnets21_STSB.rds"
 
 
 sex_assort <- function(data, networks_file, netmets_file){
@@ -27,6 +26,12 @@ sex_assort <- function(data, networks_file, netmets_file){
   #create tag_sex df for assortativity by sex
   tag_sex <- fulltrap %>% group_by(tag) %>% slice(1) %>%
     select(tag, sex) %>%
+    arrange(tag)
+
+  #create tag_sb df for assortativity by sex-breeder
+  tag_sb <- fulltrap %>% unite(sb, sex, season_breeder) %>%
+    group_by(tag) %>% slice(1) %>%
+    select(tag, sb) %>%
     arrange(tag)
 
 
@@ -53,12 +58,12 @@ sex_assort <- function(data, networks_file, netmets_file){
 
       #for each month
       print(names(overlap_network_list[[i]][j]))
-      month <- names(overlap_network_list[[i]][j])
+      month <- names(overlap_network_list[[3]][1])
 
       #dataframe to hold results per month
-      site[[j]] <- data.frame(month)
+      site[[1]] <- data.frame(month)
 
-      adjmat <- overlap_network_list[[i]][[j]]
+      adjmat <- overlap_network_list[[3]][[1]]
       diag(adjmat) <- 0 #matrix diagonal is NA - assortnet needs it to be 0
 
       #create WEIGHTED NETWORK from adjacency matrix
@@ -66,7 +71,7 @@ sex_assort <- function(data, networks_file, netmets_file){
 
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
 
-      ### FOR ASSORTATIVITY
+      ### FOR ASSORTATIVITY BY SEX
       #filter tag_sex for only ids caught this site/occ
       ids_sex <- tag_sex %>% filter(tag %in% ids)
       #calculate assortativity
@@ -78,9 +83,34 @@ sex_assort <- function(data, networks_file, netmets_file){
       mat <- out$mixing_matrix #save just the mixing matrix
       #pull the percent of M/F overlap, F/F, and M/M
         #check is to make sure NA is input if there was only one sex of breeders in that month
-      site[[j]]$fm <- ifelse(check==1, NA, mat["M","F"]*2) #double the fm overlaps since network is undirected
-      site[[j]]$ff <- ifelse(check==1, NA, mat["F","F"])
-      site[[j]]$mm <- ifelse(check==1, NA, mat["M","M"])
+      site[[1]]$fm <- ifelse(check==1, NA, mat["M","F"]*2) #double the fm overlaps since network is undirected
+      site[[1]]$ff <- ifelse(check==1, NA, mat["F","F"])
+      site[[1]]$mm <- ifelse(check==1, NA, mat["M","M"])
+
+
+#       ### FOR ASSORTATIVITY BY SEX-BREEDER
+#       #filter tag_sex for only ids caught this site/occ
+#       ids_sb <- tag_sb %>% filter(tag %in% ids)
+#       #calculate assortativity
+#       out_sb <- assortment.discrete(adjmat, as.vector(ids_sb$sb), weighted=TRUE, SE=FALSE, M=1, na.rm=FALSE)
+#       #out is a list, $r has the assort coef across all individuals, $mixing_matrix has ppn of edges by sex-breeder
+#
+#       # check <- n_distinct(ids_sb$sb) #how many sb's are represented? (to catch site/month when only one type is present)
+#
+#       mat_sb <- out_sb$mixing_matrix #save just the mixing matrix
+#       #pull the percent of all the overlaps (hold onto your pants, this is going to get cra')
+# #####not sure how to proof this for missing categories
+#       site[[j]]$fbmb <- mat_sb["M_breeder","F_breeder"]*2 #double since network is undirected
+#       site[[j]]$fbfb <- mat_sb["F_breeder","F_breeder"]
+#       site[[j]]$mbmb <- mat_sb["M_breeder","M_breeder"]
+#       site[[j]]$fbmnb <- mat_sb["M_nonbreeder","F_breeder"]*2
+#       site[[j]]$fnbfb <- mat_sb["F_nonbreeder","F_breeder"]*2
+#       site[[j]]$mnbmb <- mat_sb["M_nonbreeder","M_breeder"]*2
+#       site[[j]]$fnbmb <- mat_sb["M_breeder","F_nonbreeder"]*2
+#       site[[j]]$fnbfnb <- mat_sb["F_nonbreeder","F_nonbreeder"]
+#       site[[j]]$mm <- mat_sb["M_nonbreeder","M_nonbreeder"]
+#       site[[j]]$fm <- mat_sbmat["M_nonbreeder","F_nonbreeder"]*2
+
 
     }
 
