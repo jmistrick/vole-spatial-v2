@@ -6,16 +6,20 @@
 
 ## lol jk - the models were goofy because the juvs don't move / are only ever caught once...
 ## but I rewrote this code on 6/6 in a slightly different way because I'm an idiot and didn't realize I still had this
+## now on 6/8 we're back to using this version because I did it slightly more effectively than what I did on 6/6
 
 
 # data <- readRDS(here("fulltrap21_05.10.23.rds"))
 # data <- readRDS(here("fulltrap22_05.10.23.rds"))
 # params_file = "params21_stsb.rds"
 
-## Function for generating the a and b parameters by season/trt/sex to define the distributions for vole HRs
+## Function for generating the a and b parameters by season/trt/sex/season_breeder to define the distributions for vole HRs
 ## Inputs: data = FULL fulltrap dataframe that contains all capture data for a given year
 ##          params_file = file name and extension in " " for the params_file to be generated
-## Output: dataframe of parameters (3 columns for seasontrtsex, a param, b param)
+## Output: dataframe of parameters (3 columns for seasontrtsexbreeder, a param, b param)
+
+### this function is only saving the params - NOT the seasonal centroids
+    ###(because I'm using monthly centroids for networks and save those in the construct_overlap_networks function)
 
 generate_params <- function(data, params_file) {
 
@@ -47,27 +51,7 @@ generate_params <- function(data, params_file) {
 
   ##---------------- CREATE A LIST of CAPTURE DATA (nested by season, trt) --------------------
 
-  # #split() makes a list consisting of individual data.frames based on a condition ('season' in this case)
-  # season_list <- split(fulltrap, fulltrap$season)
-  #
-  # #create new list to hold nested site, month capture
-  # seasontrt_list <- list()
-  #
-  # for(i in 1:length(season_list)){
-  #   # print(i)
-  #   temp_list <- split(season_list[[i]], season_list[[i]]$trt)
-  #   seasontrt_list[[i]] <- temp_list
-  # }
-  #
-  # #name 1e list element as season (2e list elements are trts)
-  # names(seasontrt_list) <- season
-  #
-  # ### SEASONTRT_LIST is a nested list of length 2
-  # ### 1e level is season (summer/fall) (2)
-  # ### 2e level is all the trts per site (4)
-  # ### all grids per trt and months per season are combined together!!
-
-
+  #a slick little something from stackoverflow to construct a nested list in one go #blessed
   season_breeder_list <- lapply(split(fulltrap, fulltrap$season, drop = TRUE),
                                 function(x) split(x, x[["season_breeder"]], drop = TRUE))
 
@@ -154,9 +138,9 @@ params_list <- list()
 
         #----------------------- 3. Generating overlap network  ------------------------------#
 
-        ##SEASONAL CENTROIDS to calc SEASONAL PARAMS
+        ##SEASONAL CENTROIDS to calc SEASONAL PARAMS by season, trt, sex, breeder
 
-        # Recalculating (weighted) centroids
+        # Calculating (weighted) centroids across the SEASON
         # Weighted because a trap in which an individual was caught multiple times will have a greater influence on its centroid than a trap in which it was caught only once
         matrix_dists_real2 <- fulldata #only one entry per tag/trap - Det.obs is (1-observed,0-not) Det.count is # of times in that trap
         matrix_dists_real2 <- matrix_dists_real2 %>% mutate(Det.count2 = Det.count)
@@ -180,8 +164,8 @@ params_list <- list()
 
         # Calculating total number of detections per individual
         ### TBH Janine isn't sure this is needed because it doesn't appear to be used anywhere, but a good check I guess
-        a <- tapply(matrix_dists_obs$Det.count, list(matrix_dists_obs$Tag_ID),sum)
-        matrix_dists_obs$Det.count.total <- a[match(matrix_dists_obs$Tag_ID,names(a))]
+        # a <- tapply(matrix_dists_obs$Det.count, list(matrix_dists_obs$Tag_ID),sum)
+        # matrix_dists_obs$Det.count.total <- a[match(matrix_dists_obs$Tag_ID,names(a))]
 
         # Estimating home range profiles (negative sigmoidal curves) using this data
         # Example: Sex-specific curves (male home range profile = fit.males; female home range profile = fit.females)
@@ -250,6 +234,8 @@ params_list <- list()
 ##          centroids_file = file name and extension in "" for the output file of monthly centroids for all voles
 ##          networks_file = file name and extension in "" for the output file of adjacency matrices
 ## Output: list (saved to rds file) of all sites, months and an adjacency matrix for each of overlaps between voles
+
+## also outputs monthly centroids for all voles - to be used to create the circle plots by month
 
 # #clear environment
 # rm(list = ls())
@@ -364,7 +350,7 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 
       ### MONTHLY CENTRIODS with SEASONAL A B PARAMS
 
-      # Recalculating (weighted) centroids
+      # Recalculating (weighted) centroids - CENTROID OF ALL CAPTURES IN A MONTH
       # Weighted because a trap in which an individual was caught multiple times will have a greater influence on its centroid than a trap in which it was caught only once
       matrix_dists_real2 <- fulldata #only one entry per tag/trap - Det.obs is (1-observed,0-not) Det.count is # of times in that trap
       matrix_dists_real2 <- matrix_dists_real2 %>% mutate(Det.count2 = Det.count)
@@ -431,8 +417,7 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 
 
 
-  #collate centroids results
-
+  #collate MONTHLY centroids results
   #make a list to store things
   centroids_summary1 <- list()
 
@@ -467,10 +452,10 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 ##        netmets_file = file to be generated, df of network metrics
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
-ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-data <- ft21
-networks_file <- "overlapnet21_stsb.rds"
-netmets_file <- "netmets21_stsb.rds"
+# ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+# data <- ft21
+# networks_file <- "overlapnet21_stsb.rds"
+# netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
@@ -483,13 +468,10 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
     drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
     unite("sts", season, trt, sex, remove=FALSE) #add sts column to match params_summary
 
+  ## BREEDERS AND NONBREEDERS ARE HERE!
+
   # load the network data
   overlap_network_list <- readRDS(here(networks_file))
-
-  #create tag_sex df for assortativity by sex
-  tag_sex <- fulltrap %>% group_by(tag) %>% slice(1) %>%
-    select(tag, sex) %>%
-    arrange(tag)
 
 
   ##--------------------------------------------
@@ -536,7 +518,7 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
       # site[[j]]$wt.n.edge <- rep(sum(E(inet)$weight), length(ids)) ##### THIS IS WEIGHTED #####
 
-      ####### N COMPONENTS ISN'T WORKING RN
+      ### N COMPONENTS ISN'T WORKING RN
       # site[[j]]$n.component <- rep(igraph::count_components(inet), length(ids))
 
       ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - using assortnet in separate script
@@ -561,8 +543,8 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       metadata <- data %>% #starts with fulltrap, need to get down to a 'traits' version
         filter(site==site.id & month==month.id) %>%
         group_by(tag) %>% slice(1) %>% #one entry per vole per month
-        drop_na(sex) %>% #didn't build networks with animals with no sex
-        drop_na(season_breeder) #didn't build networks with animals with no breeder status
+        drop_na(sex) %>% #didn't build networks with animals with sex=NA
+        drop_na(season_breeder) #didn't build networks with animals with season_breeder=NA
 
       #set "sex" as a vertex attribute
       g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
@@ -571,9 +553,9 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       #save vectors
       # focal_sex <- get.vertex.attribute(g, "sex") #female is 1, male is 2
       # focal_breed <- get.vertex.attribute(g, "breeder") #breeder is 1, nonbreeder is 2
-      focal_id <- get.vertex.attribute(g, "name")
+      focal_id <- get.vertex.attribute(g, "name") #this isn't strictly necessary, just to make sure the focal vole is correct
 
-      ## code from Matt M-S for male strength/female strength
+      ## code from Matt Michalska-Smith for male strength/female strength
       sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,2]]
           #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
       weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
@@ -582,12 +564,12 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
       ## code from Matt M-S for breeder/nonbreeder strength
       breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,2]]
-      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+          #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
       weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
       degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*weight_to)) #this need to be mode="OUT" (the "to" individual)
       degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*weight_to)) #this need to be mode="OUT"
 
-      ##### TRYING SOMETHING 6/8 -- calculating weighted degree in the same way I calc M.deg/F.deg
+      ##### TRYING SOMETHING 6/8 -- calculating weighted degree in the same way I calc M.deg/F.deg ######
       ## this at least does give me a degree measurement that = M.deg+F.deg
       ## but why isn't strength(inet) giving me the same result?
       nodestrength <- strength(g, mode="out", weights=(weight_to)) #this need to be mode="OUT" (the "to" individual)
@@ -597,14 +579,12 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       #####-------------------------------------
 
       #network metrics to calculate
-      site[[j]]$focal_id <- focal_id
-      # site[[j]]$focal_sex <- focal_sex
+      site[[j]]$focal_id <- focal_id #not necessary, but a good check to make sure I'm pulling info for the right vole
+      # site[[j]]$focal_sex <- focal_sex #not necessary, but a good check to make sure I'm pulling info for the right vole
       site[[j]]$F.deg <- degree_to_F
       site[[j]]$M.deg <- degree_to_M
       site[[j]]$b.deg <- degree_to_b
       site[[j]]$nb.deg <- degree_to_nb
-
-      # output <- as.data.frame(cbind(focal_id, focal_sex, degree_to_F, degree_to_M))
 
     }
 
@@ -668,8 +648,8 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
     mutate(site = as.factor(site)) %>% #make site a factor
     rename(tag=ids)
 
-  # #save it
-  # saveRDS(wt_net_mets_summary, here(netmets_file))
+  #save it
+  saveRDS(wt_net_mets_summary, here(netmets_file))
 
 
 }
