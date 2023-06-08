@@ -8,9 +8,9 @@
 ## but I rewrote this code on 6/6 in a slightly different way because I'm an idiot and didn't realize I still had this
 
 
-data <- readRDS(here("fulltrap21_05.10.23.rds"))
+# data <- readRDS(here("fulltrap21_05.10.23.rds"))
 # data <- readRDS(here("fulltrap22_05.10.23.rds"))
-params_file = "params21_stsb.rds"
+# params_file = "params21_stsb.rds"
 
 ## Function for generating the a and b parameters by season/trt/sex to define the distributions for vole HRs
 ## Inputs: data = FULL fulltrap dataframe that contains all capture data for a given year
@@ -467,10 +467,10 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 ##        netmets_file = file to be generated, df of network metrics
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
-
-# data <- ft21
-# networks_file <- "overlapnet21_stsb.rds"
-# netmets_file <- "netmets21_stsb.rds"
+ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+data <- ft21
+networks_file <- "overlapnet21_stsb.rds"
+netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
@@ -504,7 +504,7 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
     #for each site
     print(names(overlap_network_list[i]))
-    site.id <- names(overlap_network_list[6])
+    site.id <- names(overlap_network_list[i])
 
     site <- list()
 
@@ -587,6 +587,13 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*weight_to)) #this need to be mode="OUT" (the "to" individual)
       degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*weight_to)) #this need to be mode="OUT"
 
+      ##### TRYING SOMETHING 6/8 -- calculating weighted degree in the same way I calc M.deg/F.deg
+      ## this at least does give me a degree measurement that = M.deg+F.deg
+      ## but why isn't strength(inet) giving me the same result?
+      nodestrength <- strength(g, mode="out", weights=(weight_to)) #this need to be mode="OUT" (the "to" individual)
+      site[[j]]$strength <- nodestrength
+      ##############################################
+
       #####-------------------------------------
 
       #network metrics to calculate
@@ -661,8 +668,8 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
     mutate(site = as.factor(site)) %>% #make site a factor
     rename(tag=ids)
 
-  #save it
-  saveRDS(wt_net_mets_summary, here(netmets_file))
+  # #save it
+  # saveRDS(wt_net_mets_summary, here(netmets_file))
 
 
 }
