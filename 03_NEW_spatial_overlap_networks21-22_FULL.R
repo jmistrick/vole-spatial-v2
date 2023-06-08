@@ -15,7 +15,7 @@ rm(list = ls())
 #######----------------- VOLE CAPTURE DATA CLEANING -----------------------###############
 
 ### May 04 2023 version of vole capture and week recap data are THE MOST UP-TO-DATE VERSIONS ###
-                ### May 10 2023 versions of FULLTRAP correspond ###
+### May 10 2023 versions of FULLTRAP correspond ###
 
 # #pull the data cleaning function
 # source(here("01_FUNCTION_data_cleaning.R"))
@@ -37,7 +37,7 @@ rm(list = ls())
 #load the fulltrap 21 and 22 data (make sure it's the most recent version)
     ## NOTE ## all DP, DT, or S animals are still in the fulltrap datasets
 ft21 <- readRDS(here("fulltrap21_05.10.23.rds")) ##breeders and nonbreeders are here
-ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
+ft22 <- readRDS(here("fulltrap22_05.10.23.rds")) ##breeders and nonbreeders are here
 
 
 
@@ -48,8 +48,10 @@ ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
 #call the functions
 source(here("02_FUNCTIONS_construct_overlap_networks_SBT.R"))
 
+#run for 2021 data
+
 # ##----- OPTION - LIFETIME CENTROIDS -----------
-# ## this function is only in the "...seasontrt.R" version of 02_FUNCTIONS
+# ## this function is only in the "...seasontrt.R" version of 02_FUNCTIONS - NOT what is pulled here
 # #run for 2021 data
 # centroid_calc(data = ft21,
 #               centroids_file = "centroids21.rds")
@@ -57,55 +59,55 @@ source(here("02_FUNCTIONS_construct_overlap_networks_SBT.R"))
 # # centroids21 <- readRDS(here("centroids21.rds"))
 
 generate_params(data = ft21,
-                params_file = "params21.rds")
+                params_file = "params21_STSB.rds")
 
-# params21 <- readRDS(here("params21.rds"))
-# centroids21 <- readRDS(here("centroids21.rds"))
+# params21 <- readRDS(here("params21_STSB.rds"))
 
 create_overlap_networks(data = ft21,
-                        centroids_file = "centroids21.rds",
-                        params_file = "params21.rds",
-                        networks_file = "overlapnets21.rds")
+                        centroids_file = "centroids21_STSB.rds",
+                        params_file = "params21_STSB.rds",
+                        networks_file = "overlapnets21_STSB.rds")
 
-# overlapnets21 <- readRDS(here("overlapnets21.rds"))
+# centroids21 <- readRDS(here("centroids21_STSB.rds"))
+# overlapnets21 <- readRDS(here("overlapnets21_STSB.rds"))
 
 calculate_network_metrics(data=ft21,
-                          networks_file = "overlapnets21.rds",
-                          netmets_file = "netmets21.rds")
+                          networks_file = "overlapnets21_STSB.rds",
+                          netmets_file = "netmets21_STSB.rds")
 
-# netmets21 <- readRDS(here("netmets21.rds"))
+# netmets21 <- readRDS(here("netmets21_STSB.rds"))
 
 #run for 2022 data
 
 # ##----- OPTION - LIFETIME CENTROIDS -----------
-# ## this function is only in the "...seasontrt.R" version of 02_FUNCTIONS
+# ## this function is only in the "...seasontrt.R" version of 02_FUNCTIONS - NOT what is pulled here
 # centroid_calc(data = ft22,
 #               centroids_file = "centroids22.rds")
 #
 # # centroids22 <- readRDS(here("centroids22.rds"))
 
 generate_params(data = ft22,
-                params_file = "params22.rds")
+                params_file = "params22_STSB.rds")
 
-# params22 <- readRDS(here("params22.rds"))
-# centroids22 <- readRDS(here("centroids22.rds"))
+# params22 <- readRDS(here("params22_STSB.rds"))
 
 create_overlap_networks(data = ft22,
-                        params_file = "params22.rds",
-                        centroids_file = "centroids22.rds",
-                        networks_file = "overlapnets22.rds")
+                        params_file = "params22_STSB.rds",
+                        centroids_file = "centroids22_STSB.rds",
+                        networks_file = "overlapnets22_STSB.rds")
 
-# overlapnets22 <- readRDS(here("overlapnets22.rds"))
+# centroids22 <- readRDS(here("centroids22_STSB.rds"))
+# overlapnets22 <- readRDS(here("overlapnets22_STSB.rds"))
 
 calculate_network_metrics(data=ft22,
-                          networks_file = "overlapnets22.rds",
-                          netmets_file = "netmets22.rds")
+                          networks_file = "overlapnets22_STSB.rds",
+                          netmets_file = "netmets22_STSB.rds")
 
-# netmets22 <- readRDS(here("netmets22.rds"))
+# netmets22 <- readRDS(here("netmets22_STSB.rds"))
 
 
 
-#######----------------- PLOTTING (to keel you!) -----------------------###############
+#######----------------- NETWORKS PLOTTING (to keel you!) -----------------------###############
 
 # overlap_network_list <- readRDS(here("overlapnets21.rds"))
 # overlap_network_list <- readRDS(here("overlapnets22.rds"))
@@ -114,7 +116,7 @@ calculate_network_metrics(data=ft22,
 
 # for(i in 1:length(overlap_network_list)) {
 #
-#   png(filename = paste("NEW_spatial_overlap_", "breeder_wt0.1_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
+#   png(filename = paste("spatial_overlap_", "ERRYBODY_wt0.1_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
 #       width=10 , height=3, units="in", res=600)
 #
 #   par(mfrow = c(1,5))
