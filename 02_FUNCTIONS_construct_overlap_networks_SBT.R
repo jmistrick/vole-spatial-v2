@@ -452,10 +452,10 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
 ##        netmets_file = file to be generated, df of network metrics
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
-# ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-# data <- ft21
-# networks_file <- "overlapnet21_stsb.rds"
-# netmets_file <- "netmets21_stsb.rds"
+ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+data <- ft21
+networks_file <- "overlapnet21_stsb.rds"
+netmets_file <- "netmets21_stsb.rds"
 
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
@@ -558,23 +558,14 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       ## code from Matt Michalska-Smith for male strength/female strength
       sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,2]]
           #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
-      degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*weight_to)) #this need to be mode="OUT" (the "to" individual)
-      degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*weight_to)) #this need to be mode="OUT"
+      degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
 
       ## code from Matt M-S for breeder/nonbreeder strength
       breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,2]]
           #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
-      degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*weight_to)) #this need to be mode="OUT" (the "to" individual)
-      degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*weight_to)) #this need to be mode="OUT"
-
-      ##### TRYING SOMETHING 6/8 -- calculating weighted degree in the same way I calc M.deg/F.deg ######
-      ## this at least does give me a degree measurement that = M.deg+F.deg
-      ## but why isn't strength(inet) giving me the same result?
-      nodestrength <- strength(g, mode="out", weights=(weight_to)) #this need to be mode="OUT" (the "to" individual)
-      site[[j]]$strength <- nodestrength
-      ##############################################
+      degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
 
       #####-------------------------------------
 
