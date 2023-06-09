@@ -492,9 +492,8 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       ## code from Matt M-S for male strength/female strength
       sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,2]]
           #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      weight_to <- get.edge.attribute(g, "weight")[get.edgelist(g, names=FALSE)[,2]]
-      degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*weight_to)) #this need to be mode="OUT" (the "to" individual)
-      degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*weight_to)) #this need to be mode="OUT"
+      degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
 
 
       #network metrics to calculate
