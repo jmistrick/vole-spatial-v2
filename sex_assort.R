@@ -1,12 +1,25 @@
+# load packages
+library(here)
+library(tidyverse)
+library(igraph)
+library(lubridate)
+library(janitor)
+
 #clear environment
 rm(list = ls())
 
-ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-data = ft21
-networks_file = "overlapnets21_STSB.rds"
+# ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
+# data = ft21
+# networks_file = "overlapnets21_STSB.rds"
+# sex_assort_file = "sex_assort21_STSB.rds"
+
+ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
+data = ft22
+networks_file = "overlapnets22_STSB.rds"
+sex_assort_file = "sex_assort22_STSB.rds"
 
 
-sex_assort <- function(data, networks_file, netmets_file){
+sex_assort <- function(data, networks_file, sex_assort_file){
 
   ##---------------- LOAD THE DATA ----------------------
 
@@ -58,12 +71,12 @@ sex_assort <- function(data, networks_file, netmets_file){
 
       #for each month
       print(names(overlap_network_list[[i]][j]))
-      month <- names(overlap_network_list[[3]][1])
+      month <- names(overlap_network_list[[i]][j])
 
       #dataframe to hold results per month
-      site[[1]] <- data.frame(month)
+      site[[j]] <- data.frame(month)
 
-      adjmat <- overlap_network_list[[3]][[1]]
+      adjmat <- overlap_network_list[[i]][[j]]
       diag(adjmat) <- 0 #matrix diagonal is NA - assortnet needs it to be 0
 
       #create WEIGHTED NETWORK from adjacency matrix
@@ -83,34 +96,36 @@ sex_assort <- function(data, networks_file, netmets_file){
       mat <- out$mixing_matrix #save just the mixing matrix
       #pull the percent of M/F overlap, F/F, and M/M
         #check is to make sure NA is input if there was only one sex of breeders in that month
-      site[[1]]$fm <- ifelse(check==1, NA, mat["M","F"]*2) #double the fm overlaps since network is undirected
-      site[[1]]$ff <- ifelse(check==1, NA, mat["F","F"])
-      site[[1]]$mm <- ifelse(check==1, NA, mat["M","M"])
+      site[[j]]$fm <- ifelse(check==1, NA, mat["M","F"]*2) #double the fm overlaps since network is undirected
+      site[[j]]$ff <- ifelse(check==1, NA, mat["F","F"])
+      site[[j]]$mm <- ifelse(check==1, NA, mat["M","M"])
 
 
-#       ### FOR ASSORTATIVITY BY SEX-BREEDER
-#       #filter tag_sex for only ids caught this site/occ
-#       ids_sb <- tag_sb %>% filter(tag %in% ids)
-#       #calculate assortativity
-#       out_sb <- assortment.discrete(adjmat, as.vector(ids_sb$sb), weighted=TRUE, SE=FALSE, M=1, na.rm=FALSE)
-#       #out is a list, $r has the assort coef across all individuals, $mixing_matrix has ppn of edges by sex-breeder
-#
-#       # check <- n_distinct(ids_sb$sb) #how many sb's are represented? (to catch site/month when only one type is present)
-#
-#       mat_sb <- out_sb$mixing_matrix #save just the mixing matrix
-#       #pull the percent of all the overlaps (hold onto your pants, this is going to get cra')
-# #####not sure how to proof this for missing categories
-#       site[[j]]$fbmb <- mat_sb["M_breeder","F_breeder"]*2 #double since network is undirected
-#       site[[j]]$fbfb <- mat_sb["F_breeder","F_breeder"]
-#       site[[j]]$mbmb <- mat_sb["M_breeder","M_breeder"]
-#       site[[j]]$fbmnb <- mat_sb["M_nonbreeder","F_breeder"]*2
-#       site[[j]]$fnbfb <- mat_sb["F_nonbreeder","F_breeder"]*2
-#       site[[j]]$mnbmb <- mat_sb["M_nonbreeder","M_breeder"]*2
-#       site[[j]]$fnbmb <- mat_sb["M_breeder","F_nonbreeder"]*2
-#       site[[j]]$fnbfnb <- mat_sb["F_nonbreeder","F_nonbreeder"]
-#       site[[j]]$mm <- mat_sb["M_nonbreeder","M_nonbreeder"]
-#       site[[j]]$fm <- mat_sbmat["M_nonbreeder","F_nonbreeder"]*2
+      ### FOR ASSORTATIVITY BY SEX-BREEDER
+      #filter tag_sex for only ids caught this site/occ
+      ids_sb <- tag_sb %>% filter(tag %in% ids)
+      #calculate assortativity
+      out_sb <- assortment.discrete(adjmat, as.vector(ids_sb$sb), weighted=TRUE, SE=FALSE, M=1, na.rm=FALSE)
+      #out is a list, $r has the assort coef across all individuals, $mixing_matrix has ppn of edges by sex-breeder
 
+      #if sex-breeder combo isn't present, value saved==0, else it's a number
+      mb <- nrow(ids_sb %>% filter(sb=="M_breeder"))
+      mnb <- nrow(ids_sb %>% filter(sb=="M_nonbreeder"))
+      fb <- nrow(ids_sb %>% filter(sb=="F_breeder"))
+      fnb <- nrow(ids_sb %>% filter(sb=="F_nonbreeder"))
+
+      mat_sb <- out_sb$mixing_matrix #save just the mixing matrix
+      #pull the percent of all the overlaps (hold onto your pants, this is going to get cra')
+      site[[j]]$fbmb <- ifelse(fb=="0" | mb=="0", NA, mat_sb["M_breeder","F_breeder"]*2) #double since network is undirected
+      site[[j]]$fbfb <- ifelse(fb=="0", NA, mat_sb["F_breeder","F_breeder"])
+      site[[j]]$mbmb <- ifelse(mb=="0", NA, mat_sb["M_breeder","M_breeder"])
+      site[[j]]$fbmnb <- ifelse(fb=="0" | mnb=="0", NA, mat_sb["M_nonbreeder","F_breeder"]*2)
+      site[[j]]$fbfnb <- ifelse(fb=="0" | fnb=="0", NA, mat_sb["F_nonbreeder","F_breeder"]*2)
+      site[[j]]$mbmnb <- ifelse(mnb=="0" | mb=="0", NA, mat_sb["M_nonbreeder","M_breeder"]*2)
+      site[[j]]$mbfnb <- ifelse(fnb=="0" | mb=="0", NA, mat_sb["M_breeder","F_nonbreeder"]*2)
+      site[[j]]$fnbfnb <- ifelse(fnb=="0", NA, mat_sb["F_nonbreeder","F_nonbreeder"])
+      site[[j]]$mnbmnb <- ifelse(mnb=="0", NA, mat_sb["M_nonbreeder","M_nonbreeder"])
+      site[[j]]$fnbmnb <- ifelse(mnb=="0" | fnb=="0", NA, mat_sb["M_nonbreeder","F_nonbreeder"]*2)
 
     }
 
@@ -166,18 +181,63 @@ sex_assort <- function(data, networks_file, netmets_file){
     mutate(site = as.factor(site)) #make site a factor
 
   #save it
-  # saveRDS()
+  saveRDS(sex_assort_summary, here(sex_assort_file))
 
 
 }
 
 
 
+# #visualize one year
+# sex_assort_summary %>%
+#   left_join(read.csv(here("grid_trts.csv")), by="site") %>% unite(trt, food_trt, helm_trt) %>%
+#   select(!c(ff, fm, mm)) %>%
+#   pivot_longer(-c(site, trt, month), names_to = "group", values_to = "pct") %>%
+#   mutate(month = factor(month, levels=c('june', "july", "aug", "sept", "oct"))) %>%
+#   mutate(group = factor(group, levels=c("fbfb", "fbfnb", "fnbfnb", "fbmnb", "fbmb",
+#                                         "fnbmnb", "mbfnb", "mbmb", "mbmnb", "mnbmnb"))) %>%
+#   ggplot(aes(fill=group, y=pct, x=month)) +
+#   geom_bar(position="fill", stat="identity") +
+#   scale_fill_manual(values=c("#a00000", "#ff4b4b", "#ff7c7c",
+#                              "#ffbf00",
+#                              "#800080", "#efbbff",
+#                              "#2a940a",
+#                              "#0200b9", "#007dff", "#91e7ff")) +
+#   facet_wrap(~trt, nrow=1)
+
+
+
+###### both years ########
+
+#combo 2021 and 2022
+sex_assort21 <- readRDS(here("sex_assort21_STSB.rds")) %>%
+  mutate(year="2021")
+sex_assort22 <- readRDS(here("sex_assort22_STSB.rds")) %>%
+  mutate(year="2022")
+
+sex_assort21.22 <- rbind(sex_assort21, sex_assort22)
+
+
+
 #visualize
-sex_assort_summary %>%
+png(filename = "sex-breed_assort.png", width=12 , height=6, units="in", res=600)
+
+sex_assort21.22 %>%
   left_join(read.csv(here("grid_trts.csv")), by="site") %>% unite(trt, food_trt, helm_trt) %>%
-  pivot_longer(-c(site, trt, month), names_to = "group", values_to = "pct") %>%
+  select(!c(ff, fm, mm)) %>%
+  pivot_longer(-c(year, site, trt, month), names_to = "group", values_to = "pct") %>%
+  mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm"))) %>%
   mutate(month = factor(month, levels=c('june', "july", "aug", "sept", "oct"))) %>%
-  ggplot(aes(x=month, y=pct, color=group)) +
-  geom_point() +
-  facet_wrap(~trt)
+  mutate(group = factor(group, levels=c("fbfb", "fbfnb", "fnbfnb", "fbmnb", "fbmb",
+                                        "fnbmnb", "mbfnb", "mbmb", "mbmnb", "mnbmnb"))) %>%
+  ggplot(aes(fill=group, y=pct, x=month)) +
+  geom_bar(position="fill", stat="identity") +
+  scale_fill_manual(values=c("#a00000", "#ff4b4b", "#ff7c7c",
+                             "#ffbf00",
+                             "#800080", "#efbbff",
+                             "#2a940a",
+                             "#0200b9", "#007dff", "#91e7ff")) +
+  facet_grid(year~trt) +
+  labs(main="Assortativity by Sex, Breeding Status", y="Percent of Overlaps", x="Month")
+
+dev.off()
