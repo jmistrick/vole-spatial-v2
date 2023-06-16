@@ -20,7 +20,7 @@ rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
   ## NOTE ## all DP, DT, or S animals are still in the fulltrap dataset
-fulltrap <- readRDS(file = "fulltrap_06.28.22.rds") %>%
+fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
   filter(month != "may") %>% #drop may data since not all sites had captures
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) #remove animals with sex=NA (since we can't assign then a HR)
