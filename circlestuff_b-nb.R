@@ -11,13 +11,27 @@ library(ggforce) #for geom_circle in ggplot
 #clear environment
 rm(list = ls())
 
+######## HOME RANGE DISTRIBUTION ###########
+#negative sigmoidal curve calculated following Wanelik & Farine 2022: DOI 10.1007/s00265-022-03222-5
+#where the declining probability (P) of an individual being detected at a distance (d)
+#from the centroid of its home range is given by:
 
+P(d) = 1 / (1 + e^(-a-bd))
 
-# p <- 0.01
+#where a describes the overall size of the home range
+#b describes the steepness of the edge of the home range
+#and d is the logarithmic distance from the centroid
+
+# p <- 0.01 #eg probability of detection 1%
 # a <- params21[14,2]
 # b <- params21[14,3]
 #
 # (log((1/0.01)-1) + a) / (-b)
+
+######### ^^ this equation is what I'm using to calculate e.g. the distance from the centroid with 1% probability of finding the animal,
+  ##just to plot some figure showing approx HR size to visualize the overlaps
+
+
 
 #https://stackoverflow.com/questions/65089775/plotting-custom-functions-in-ggplot-with-variables-from-dataframe
 
@@ -28,6 +42,67 @@ rm(list = ls())
 #params
 params21 <- readRDS(here("params21_STSB.rds"))
 params22 <- readRDS(here("params22_STSB.rds"))
+
+
+
+
+
+### just a lil thing 6/16 ###
+
+#mean radius in 2021 by season, sex, breed
+y21 <- readRDS(here("params21_STSB.rds")) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  mutate(area = 2*pi*(rad_0.01^2)) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  group_by(season, sex, breeder) %>%
+  summarize(mean = mean(area))
+
+#visualize M/F breeder/non size per trt from summer to fall
+readRDS(here("params21_STSB.rds")) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  ggplot(aes(x=season, y=rad_0.01, color=sex, shape=breeder)) +
+           geom_point() +
+  facet_wrap(~trt)
+
+
+#mean radius in 2021 by season, sex, breed
+y22 <- readRDS(here("params22_STSB.rds")) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  mutate(area = 2*pi*(rad_0.01^2)) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  group_by(season, sex, breeder) %>%
+  summarize(mean = mean(area))
+
+#visualize M/F breeder/non size per trt from summer to fall
+readRDS(here("params22_STSB.rds")) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  ggplot(aes(x=season, y=rad_0.01, color=sex, shape=breeder)) +
+  geom_point() +
+  facet_wrap(~trt)
+
+
+#mean across both years, all trts
+table <- rbind(y21, y22) %>%
+  mutate(area = area*10) %>%
+  group_by(season, sex, breeder) %>%
+  summarize(mean = mean(area),
+            sd = sd(area))
+
+
+#############################################
+
+
+
+
+
+
+
+
+
 
 #MONTHLY centroids
 centroids21 <- readRDS(here("centroids21_STSB.rds")) %>% rename(tag = Tag_ID)
@@ -85,6 +160,7 @@ circles22 <- left_join(centroids22, trapdat22, by=c("tag", "month", "site")) %>%
 ####-------------------------------------------
 
 
+##########Janine 6.12 says: ########## THIS NEEDS TO BE UPDATED TO WHATER THE PUUV DATA IS THESE DAYS ####################
 
 # ########### THE FOLLOWING IS PULLED FROM THE HANTA CLEANING FILE AND EDITED TO INCLUDE NONBREEDERS #############
 # #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
