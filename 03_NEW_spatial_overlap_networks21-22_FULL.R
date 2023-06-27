@@ -36,9 +36,14 @@ rm(list = ls())
 
 #load the fulltrap 21 and 22 data (make sure it's the most recent version)
     ## NOTE ## all DP, DT, or S animals are still in the fulltrap datasets
-ft21 <- readRDS(here("fulltrap21_05.10.23.rds")) ##breeders and nonbreeders are here
-ft22 <- readRDS(here("fulltrap22_05.10.23.rds")) ##breeders and nonbreeders are here
+ft21 <- readRDS(here("fulltrap21_05.10.23.rds")) %>% ##breeders and nonbreeders are here
+  unite(sb, sex, season_breeder, remove = FALSE)
+ft22 <- readRDS(here("fulltrap22_05.10.23.rds")) %>% ##breeders and nonbreeders are here
+  unite(sb, sex, season_breeder, remove = FALSE)
 
+# #minimum number of animals in may=0, max=5
+# ft21 %>% filter(month=="may") %>% group_by(site) %>% summarise(n = n_distinct(tag))
+# ft22 %>% filter(month=="may") %>% group_by(site) %>% summarise(n = n_distinct(tag))
 
 
 #######---------------- GENERATE H-R DISTRIBUTION PARAMETERS -----------------------###############
@@ -109,48 +114,90 @@ calculate_network_metrics(data=ft22,
 
 #######----------------- NETWORKS PLOTTING (to keel you!) -----------------------###############
 
-# overlap_network_list <- readRDS(here("overlapnets21.rds"))
-# overlap_network_list <- readRDS(here("overlapnets22.rds"))
+overlap_network_list <- readRDS(here("overlapnets21_STSB.rds"))
+# overlap_network_list <- readRDS(here("overlapnets22_STSB.rds"))
 
 ######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
-# for(i in 1:length(overlap_network_list)) {
-#
-#   png(filename = paste("spatial_overlap_", "ERRYBODY_wt0.1_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
-#       width=10 , height=3, units="in", res=600)
-#
-#   par(mfrow = c(1,5))
-#
-#   for(j in 1:length(overlap_network_list[[i]])){
-#
-#     data <- overlap_network_list[[i]][[j]]
-#
-#     #plot adj matrix for network
-#     g <- graph_from_adjacency_matrix(
-#       data,
-#       mode = c("undirected"),
-#       weighted = TRUE,
-#       diag = FALSE)
-#
-#     # #for thresholded edges option1
-#     # #remove edges with weight less than threshold
-#     # g2 <- delete.edges(g, which(E(g)$weight<=0.05))
-#
-#     #for thresholded edges option2
-#     #remove edges with weight less than threshold
-#     g2 <- delete.edges(g, which(E(g)$weight<=0.1))
-#
-#     #plot thresholded edges opt1 or opt2
-#     plot(g2, vertex.size=5, vertex.label=NA,
-#          main = paste(names(overlap_network_list[[i]])[j]))
-#
-#     # #for edges of varying thickness
-#     # plot(g, vertex.size=5, vertex.label=NA,
-#     #      # edge.width = ((E(g)$weight)*3),
-#     #      main = paste(names(overlap_network_list[[i]])[j]))
-#
-#   }
-#
-#   dev.off()
-#
-# }
+for(i in 1:length(overlap_network_list)) {
+
+  png(filename = paste("spatial_overlap_", "STSB_wt0.05byTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+      width=10 , height=3, units="in", res=600)
+
+  par(mfrow = c(1,5))
+
+  for(j in 1:length(overlap_network_list[[i]])){
+
+    data <- overlap_network_list[[i]][[j]]
+
+    #plot adj matrix for network
+    g <- graph_from_adjacency_matrix(
+      data,
+      mode = c("undirected"),
+      weighted = TRUE,
+      diag = FALSE)
+
+    #for thresholded edges option1
+    #remove edges with weight less than threshold
+    g2 <- delete.edges(g, which(E(g)$weight<=0.05))
+
+    # #for thresholded edges option2
+    # #remove edges with weight less than threshold
+    # g2 <- delete.edges(g, which(E(g)$weight<=0.1))
+
+    # #plot thresholded edges opt1 or opt2
+    # plot(g2, vertex.size=5, vertex.label=NA,
+    #      main = paste(names(overlap_network_list[[i]])[j]))
+
+    #for edges of varying thickness
+    plot(g2, vertex.size=5, vertex.label=NA,
+         edge.width = ((E(g2)$weight)*3),
+         main = paste(names(overlap_network_list[[i]])[j]))
+
+  }
+
+  dev.off()
+
+}
+
+
+for(i in 1:length(overlap_network_list)) {
+
+  png(filename = paste("spatial_overlap_", "STSB_wtbyTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+      width=10 , height=3, units="in", res=600)
+
+  par(mfrow = c(1,5))
+
+  for(j in 1:length(overlap_network_list[[i]])){
+
+    data <- overlap_network_list[[i]][[j]]
+
+    #plot adj matrix for network
+    g <- graph_from_adjacency_matrix(
+      data,
+      mode = c("undirected"),
+      weighted = TRUE,
+      diag = FALSE)
+
+    # #for thresholded edges option1
+    # #remove edges with weight less than threshold
+    # g2 <- delete.edges(g, which(E(g)$weight<=0.05))
+
+    # #for thresholded edges option2
+    # #remove edges with weight less than threshold
+    # g2 <- delete.edges(g, which(E(g)$weight<=0.1))
+
+    # #plot thresholded edges opt1 or opt2
+    # plot(g2, vertex.size=5, vertex.label=NA,
+    #      main = paste(names(overlap_network_list[[i]])[j]))
+
+    #for edges of varying thickness
+    plot(g, vertex.size=5, vertex.label=NA,
+         edge.width = ((E(g)$weight)*3),
+         main = paste(names(overlap_network_list[[i]])[j]))
+
+  }
+
+  dev.off()
+
+}
