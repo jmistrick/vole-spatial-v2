@@ -24,7 +24,7 @@ rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
   ## NOTE ## all DP, DT, or S animals are still in the fulltrap dataset
-fulltrap <- readRDS(file = "fulltrap22_05.10.23.rds") %>%
+fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
   filter(month != "may") %>% #drop may data since not all sites had captures
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
@@ -180,3 +180,53 @@ source(here("wanelik_farine_functions.R"))
     summary(fit.fall)
 
     ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
+
+
+
+
+
+######## pretty OUTPUT MODEL SUMMARY #########
+
+library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
+
+fit.summer %>% tbl_regression(exponentiate = TRUE,
+                                pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+      bold_p(t = 0.10) %>%
+      bold_labels() %>%
+      italicize_levels() %>%
+  gtsummary::as_tibble() %>%
+  write.csv(here("fit_summer.csv"))
+
+fit.fall %>% tbl_regression(exponentiate = TRUE,
+                              pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+      bold_p(t = 0.10) %>%
+      bold_labels() %>%
+      italicize_levels() %>%
+  gtsummary::as_tibble() %>%
+  write.csv(here("fit_fall.csv"))
+
+
+# #https://rpubs.com/benhorvath/glm_diagnostics
+# plot(density(resid(fit.summer, type='pearson')))
+# plot(density(resid(fit.fall, type='pearson')))
+#
+# plot(density(rstandard(fit.summer, type='pearson')))
+# plot(density(rstandard(fit.fall, type='pearson')))
+#
+# plot(density(resid(fit.summer, type='deviance')))
+# plot(density(resid(fit.fall, type='deviance')))
+#
+# plot(density(rstandard(fit.summer, type='deviance')))
+# plot(density(rstandard(fit.fall, type='deviance')))
+#
+# library(statmod)
+# plot(density(qresid(fit.summer)))
+# plot(density(qresid(fit.fall)))
+#
+# par(mfrow=c(1,2))
+# plot(density(matrix_dists_obs$Det.obs), main='M_0 y_hat')
+# lines(density(predict(fit.fall, type='response')), col='red')
+#
+#
+# qqnorm(statmod::qresid(fit.summer)); qqline(statmod::qresid(fit.summer))
+# qqnorm(statmod::qresid(fit.fall)); qqline(statmod::qresid(fit.fall))
