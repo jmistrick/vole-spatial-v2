@@ -501,9 +501,15 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       month.id <- names(overlap_network_list[[i]][j])
 
       adjmat <- overlap_network_list[[i]][[j]]
+      # diag(adjmat) <- 0 #edge betweenness crashes R if there are NA or NaNs in the matrix
+      # adjmat[adjmat<0.01] <- 0 #edge betweenness can't handle basically 0 values, change to 0
 
       #create WEIGHTED NETWORK from adjacency matrix
       inet <- graph_from_adjacency_matrix(adjmat, mode="undirected", weighted = TRUE, diag = FALSE)
+
+      #create UNWEIGHTED NETWORK (just for binary degree)
+      adjmatscaled <-ifelse(adjmat>0.01,1,0)
+      inet_bin <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
 
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
       month <- rep(names(overlap_network_list[[i]])[j],length(ids)) #capture month
@@ -513,14 +519,19 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
       #network metrics to calculate
       site[[j]]$wt.deg <- igraph::strength(inet) #this is the sum of all degree weights for a node
-      # site[[j]]$norm.wt.deg <- (igraph::strength(inet))/((igraph::gorder(inet))-1) #your strength/(total nodes-you)
+      site[[j]]$norm.wt.deg <- (igraph::strength(inet))/((igraph::gorder(inet))-1) #your strength/(total nodes-you)
       # site[[j]]$avg.wt.deg <- rep(mean(site[[j]]$wt.deg), length(ids)) #calculate average wt degree for a site/occasion
+
+      #binary degree (number of overlaps)
+      site[[j]]$bin.01.deg <- igraph::degree(inet_bin)
 
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
       # site[[j]]$wt.n.edge <- rep(sum(E(inet)$weight), length(ids)) ##### THIS IS WEIGHTED #####
 
       ### N COMPONENTS ISN'T WORKING RN
       # site[[j]]$n.component <- rep(igraph::count_components(inet), length(ids))
+
+      # Modularity DOESN'T WORK with WEIGHTED graphs...
 
       ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - using assortnet in separate script
 
