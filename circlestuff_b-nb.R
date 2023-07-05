@@ -26,7 +26,7 @@ P(d) = 1 / (1 + e^(-a-bd))
 # a <- params21[14,2]
 # b <- params21[14,3]
 #
-# (log((1/0.01)-1) + a) / (-b)
+# (log((1/p)-1) + a) / (-b)
 
 ######### ^^ this equation is what I'm using to calculate e.g. the distance from the centroid with 1% probability of finding the animal,
   ##just to plot some figure showing approx HR size to visualize the overlaps
@@ -43,6 +43,49 @@ P(d) = 1 / (1 + e^(-a-bd))
 params21 <- readRDS(here("params21_STSB.rds"))
 params22 <- readRDS(here("params22_STSB.rds"))
 
+
+
+### another thing 6/30 for volespatial ms ###
+## Figure for Vole Spatial manuscript ##
+
+trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
+                          "unfed_deworm" = "Unfed-Deworm",
+                          "fed_control" = "Fed-Control",
+                          "fed_deworm" = "Fed-Deworm"))
+
+season.labs <- as_labeller(c("summer" = "Summer",
+                             "fall" = "Autumn"))
+
+png(filename = here("spaceuse_sex_breed.png"), height=4, width = 10, units = "in", res=600)
+readRDS(here("params21_STSB.rds")) %>%
+  mutate(rad_0.01 = (log((1/0.00001)-1) + a) / (-b)) %>%
+separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
+  unite(trt, food_trt, helm_trt) %>%
+  mutate(x = case_when(sex=="M" ~ 4,
+                       sex=="F" ~ 13),
+         y = case_when(season_breeder=="breeder" ~ 12,
+                       season_breeder=="nonbreeder" ~ 4),
+         repro = case_when(season_breeder=="breeder" ~ "Reproductive",
+                           season_breeder=="nonbreeder" ~ "Non-Reproductive")) %>%
+  mutate(season = factor(season, levels=c("summer", "fall")),
+         trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm")),
+         repro = factor(repro, levels=c("Reproductive", "Non-Reproductive"))) %>%
+  ggplot() +
+  geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=sex, linetype=repro), alpha=0.5, linewidth=0.8) +
+  facet_grid(season~trt, labeller=labeller(trt=trt.labs, season=season.labs)) +
+  coord_fixed() +
+  labs(fill="Sex:", linetype="Reproductive Status:") +
+  theme(legend.position="bottom",
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_text(size=13),
+        legend.text = element_text(size=11)) +
+  guides(fill = guide_legend(order = 1),
+         linetype = guide_legend(order = 2)) #adjusts order of legends to show sex first then repro
+dev.off()
+
+########### end figure for Vole Spatial ms ######################
 
 
 
@@ -86,9 +129,13 @@ readRDS(here("params22_STSB.rds")) %>%
 
 
 #mean across both years, all trts
-table <- rbind(y21, y22) %>%
+table <- rbind(readRDS(here("params21_STSB.rds")), readRDS(here("params22_STSB.rds"))) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  mutate(area = 2*pi*(rad_0.01^2)) %>%
   mutate(area = area*10) %>%
-  group_by(season, sex, breeder) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  group_by(season, breeder, sex) %>%
   summarize(mean = mean(area),
             sd = sd(area))
 
