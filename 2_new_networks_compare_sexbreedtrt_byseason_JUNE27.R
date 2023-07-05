@@ -56,13 +56,17 @@ source(here("wanelik_farine_functions.R"))
 
     data <- fulltrap %>%
       filter(season=="summer") %>%
-      select(tag, trt, sex, season_breeder, trap, x, y) %>%
+      # select(tag, trt, sex, season_breeder, trap, x, y) %>%
+      select(tag, food_trt, helm_trt, sex, season_breeder, trap, x, y) %>%
+      mutate(season_breeder = factor(season_breeder, levels=c("nonbreeder", "breeder"))) %>%
       group_by(tag, trap) %>%
       mutate(Det.count = length(tag)) %>% slice(1) %>% #Det.count is number of times animal was in that trap
       ungroup()
 
     tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded
-    tagdata <- data %>% group_by(tag) %>% slice(1) %>% select(tag, trt, sex, season_breeder) #all tags with their data
+    tagdata <- data %>% group_by(tag) %>% slice(1) %>%
+      # select(tag, trt, sex, season_breeder) #all tags with their data
+      select(tag, food_trt, helm_trt, sex, season_breeder) #all tags with their data
 
     traps_rep <- do.call("rbind", replicate(length(tags$tag), traps, simplify = FALSE)) #all traps replicated for each tag
     tags_rep <- do.call("rbind", replicate(length(traps$trap), tags, simplify = FALSE)) %>% arrange(tag) #all tags replicated for each trap
@@ -73,12 +77,14 @@ source(here("wanelik_farine_functions.R"))
     fulldata <- cbind(tags_rep, traps_rep) %>%
       left_join(data, by=c("tag", "trap", "x", "y")) %>%
       group_by(tag) %>%
-      fill(c(sex, season_breeder, trt), .direction="downup") %>%
+      # fill(c(sex, season_breeder, trt), .direction="downup") %>%
+      fill(c(sex, season_breeder, food_trt, helm_trt), .direction="downup") %>%
       ungroup() %>%
       mutate(Det.count = replace_na(Det.count, 0),
              Det.obs = ifelse(Det.count==0, 0, 1)) %>%
       arrange(tag, trap) %>%
-      select(tag, sex, season_breeder, trt, x, y, Det.obs, Det.count) %>%
+      # select(tag, sex, season_breeder, trt, x, y, Det.obs, Det.count) %>%
+      select(tag, sex, season_breeder, food_trt, helm_trt, x, y, Det.obs, Det.count) %>%
       rename(x.trap = x,
              y.trap = y,
              Tag_ID = tag)
@@ -94,7 +100,8 @@ source(here("wanelik_farine_functions.R"))
     matrix_dists_real2<-matrix_dists_real2[,-9] #drops the Det.count2 column
     x <- sapply(by(matrix_dists_real2$x.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
     y <- sapply(by(matrix_dists_real2$y.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
-    obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, trt=tagdata$trt)
+    # obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, trt=tagdata$trt)
+    obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, food_trt=tagdata$food_trt, helm_trt=tagdata$helm_trt)
     obs_centroids$x <- x[match(obs_centroids$Tag_ID,names(x))]
     obs_centroids$y <- y[match(obs_centroids$Tag_ID,names(y))]
 
@@ -108,8 +115,11 @@ source(here("wanelik_farine_functions.R"))
     # matrix_dists_obs <- matrix_dists_obs[which(!is.na(matrix_dists_obs$Dist)),] #not needed, matrix is only of voles capped that month
 
     # Estimating home range profiles (negative sigmoidal curves) using this data
-    fit.summer <- glm(Det.obs ~ Dist.log + sex + trt + season_breeder +
-                        Dist.log*sex + Dist.log*trt + Dist.log*season_breeder, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
+    # fit.summer <- glm(Det.obs ~ Dist.log + sex + trt + season_breeder +
+    #                     Dist.log*sex + Dist.log*trt + Dist.log*season_breeder, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
+    fit.summer <- glm(Det.obs ~ Dist.log + sex + season_breeder + food_trt + helm_trt +
+                        Dist.log*sex + Dist.log*season_breeder +
+                        Dist.log*food_trt + Dist.log*helm_trt, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
     summary(fit.summer)
 
   ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
@@ -123,13 +133,17 @@ source(here("wanelik_farine_functions.R"))
 
     data <- fulltrap %>%
       filter(season=="fall") %>%
-      select(tag, trt, sex, season_breeder, trap, x, y) %>%
+      # select(tag, trt, sex, season_breeder, trap, x, y) %>%
+      select(tag, food_trt, helm_trt, sex, season_breeder, trap, x, y) %>%
+      mutate(season_breeder = factor(season_breeder, levels=c("nonbreeder", "breeder"))) %>%
       group_by(tag, trap) %>%
       mutate(Det.count = length(tag)) %>% slice(1) %>% #Det.count is number of times animal was in that trap
       ungroup()
 
     tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded
-    tagdata <- data %>% group_by(tag) %>% slice(1) %>% select(tag, trt, sex, season_breeder) #all tags with their data
+    tagdata <- data %>% group_by(tag) %>% slice(1) %>%
+      # select(tag, trt, sex, season_breeder) #all tags with their data
+      select(tag, food_trt, helm_trt, sex, season_breeder) #all tags with their data
 
     traps_rep <- do.call("rbind", replicate(length(tags$tag), traps, simplify = FALSE)) #all traps replicated for each tag
     tags_rep <- do.call("rbind", replicate(length(traps$trap), tags, simplify = FALSE)) %>% arrange(tag) #all tags replicated for each trap
@@ -140,12 +154,14 @@ source(here("wanelik_farine_functions.R"))
     fulldata <- cbind(tags_rep, traps_rep) %>%
       left_join(data, by=c("tag", "trap", "x", "y")) %>%
       group_by(tag) %>%
-      fill(c(sex, season_breeder, trt), .direction="downup") %>%
+      # fill(c(sex, season_breeder, trt), .direction="downup") %>%
+      fill(c(sex, season_breeder, food_trt, helm_trt), .direction="downup") %>%
       ungroup() %>%
       mutate(Det.count = replace_na(Det.count, 0),
              Det.obs = ifelse(Det.count==0, 0, 1)) %>%
       arrange(tag, trap) %>%
-      select(tag, sex, season_breeder, trt, x, y, Det.obs, Det.count) %>%
+      # select(tag, sex, season_breeder, trt, x, y, Det.obs, Det.count) %>%
+      select(tag, sex, season_breeder, food_trt, helm_trt, x, y, Det.obs, Det.count) %>%
       rename(x.trap = x,
              y.trap = y,
              Tag_ID = tag)
@@ -161,7 +177,8 @@ source(here("wanelik_farine_functions.R"))
     matrix_dists_real2<-matrix_dists_real2[,-9] #drops the Det.count2 column
     x <- sapply(by(matrix_dists_real2$x.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
     y <- sapply(by(matrix_dists_real2$y.trap[matrix_dists_real2$Det.obs==1], matrix_dists_real2$Tag_ID[matrix_dists_real2$Det.obs==1],mean),identity)
-    obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, trt=tagdata$trt)
+    # obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, trt=tagdata$trt)
+    obs_centroids <- data.frame(Tag_ID=tagdata$tag, sex=tagdata$sex, season_breeder=tagdata$season_breeder, food_trt=tagdata$food_trt, helm_trt=tagdata$helm_trt)
     obs_centroids$x <- x[match(obs_centroids$Tag_ID,names(x))]
     obs_centroids$y <- y[match(obs_centroids$Tag_ID,names(y))]
 
@@ -175,8 +192,9 @@ source(here("wanelik_farine_functions.R"))
     # matrix_dists_obs <- matrix_dists_obs[which(!is.na(matrix_dists_obs$Dist)),] #not needed, matrix is only of voles capped that month
 
     # Estimating home range profiles (negative sigmoidal curves) using this data
-    fit.fall <- glm(Det.obs ~ Dist.log + sex + trt + season_breeder +
-                        Dist.log*sex + Dist.log*trt + Dist.log*season_breeder, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
+    fit.fall <- glm(Det.obs ~ Dist.log + sex + season_breeder + food_trt + helm_trt +
+                        Dist.log*sex + Dist.log*season_breeder +
+                      Dist.log*food_trt + Dist.log*helm_trt, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
     summary(fit.fall)
 
     ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
@@ -201,7 +219,7 @@ fit.fall %>% tbl_regression(exponentiate = TRUE,
                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
       bold_p(t = 0.10) %>%
       bold_labels() %>%
-      italicize_levels() %>%
+      italicize_levels() %>% #stop here to get HTML output in RStudio
   gtsummary::as_tibble() %>%
   write.csv(here("fit_fall.csv"))
 
