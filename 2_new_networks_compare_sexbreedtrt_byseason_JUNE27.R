@@ -10,6 +10,12 @@
 ##sooooo basically I think it therefore makes sense to calculate the HR params separately per season/sex/breeder/trt like I did
 
 
+###### jUST A NOTE 7/11/23 (fucking hell I'm running out of time) -- decided that fitting space use like this (sex, breeder, trt all in a season)
+## is way better than whatevertf I was was doing before in pieces. SO I'm going to use this version for BOTH
+## vole-spatial and vole-hanta -- I also added an interaction between food*helm because science
+## THIS separately looks at sex and breeding (not 'fucntional group' as a 4 factor variable). I don't know if
+## it matters, but this is easier to interpret so deal with it #aggressive
+
 # load packages
 library(here)
 library(tidyverse)
@@ -24,7 +30,13 @@ rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
   ## NOTE ## all DP, DT, or S animals are still in the fulltrap dataset
-fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
+# fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
+#   filter(month != "may") %>% #drop may data since not all sites had captures
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
+#   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
+#   drop_na(season_breeder)
+
+fulltrap <- readRDS(file = "fulltrap22_05.10.23.rds") %>%
   filter(month != "may") %>% #drop may data since not all sites had captures
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
@@ -51,7 +63,7 @@ traps <- fulltrap %>% group_by(trap) %>% slice(1) %>%
 # Reading in required functions in wanelik_farine_functions.R
 source(here("wanelik_farine_functions.R"))
 
-##------------ CALCULATE DISTANCES FOR EVERYONE, RUN GLM BY SEX, TRT ------------------------
+##------------ CALCULATE DISTANCES FOR EVERYONE, RUN GLM BY SEX, BREEDER, TRT ------------------------
 ##------------------------------------- SUMMER ----------------------------------------------
 
     data <- fulltrap %>%
@@ -117,12 +129,17 @@ source(here("wanelik_farine_functions.R"))
     # Estimating home range profiles (negative sigmoidal curves) using this data
     # fit.summer <- glm(Det.obs ~ Dist.log + sex + trt + season_breeder +
     #                     Dist.log*sex + Dist.log*trt + Dist.log*season_breeder, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
-    fit.summer <- glm(Det.obs ~ Dist.log + sex + season_breeder + food_trt + helm_trt +
+    fit.summer <- glm(Det.obs ~ Dist.log + sex + season_breeder +
+                        food_trt + helm_trt + food_trt*helm_trt +
                         Dist.log*sex + Dist.log*season_breeder +
-                        Dist.log*food_trt + Dist.log*helm_trt, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
+                        Dist.log*food_trt + Dist.log*helm_trt +
+                        Dist.log*food_trt*helm_trt,
+                      data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
     summary(fit.summer)
 
   ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
+
+    #yes
 
 
 ##-----------------------------------------------------------------------------------------------------
@@ -192,9 +209,12 @@ source(here("wanelik_farine_functions.R"))
     # matrix_dists_obs <- matrix_dists_obs[which(!is.na(matrix_dists_obs$Dist)),] #not needed, matrix is only of voles capped that month
 
     # Estimating home range profiles (negative sigmoidal curves) using this data
-    fit.fall <- glm(Det.obs ~ Dist.log + sex + season_breeder + food_trt + helm_trt +
-                        Dist.log*sex + Dist.log*season_breeder +
-                      Dist.log*food_trt + Dist.log*helm_trt, data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
+    fit.fall <- glm(Det.obs ~ Dist.log + sex + season_breeder +
+                      food_trt + helm_trt + food_trt*helm_trt +
+                      Dist.log*sex + Dist.log*season_breeder +
+                      Dist.log*food_trt + Dist.log*helm_trt +
+                      Dist.log*food_trt*helm_trt,
+                    data=matrix_dists_obs, family=binomial, control = list(maxit = 50))
     summary(fit.fall)
 
     ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
@@ -213,7 +233,7 @@ fit.summer %>% tbl_regression(exponentiate = TRUE,
       bold_labels() %>%
       italicize_levels() %>%
   gtsummary::as_tibble() %>%
-  write.csv(here("fit_summer.csv"))
+  write.csv(here("fit_summer22.csv"))
 
 fit.fall %>% tbl_regression(exponentiate = TRUE,
                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
@@ -221,7 +241,7 @@ fit.fall %>% tbl_regression(exponentiate = TRUE,
       bold_labels() %>%
       italicize_levels() %>% #stop here to get HTML output in RStudio
   gtsummary::as_tibble() %>%
-  write.csv(here("fit_fall.csv"))
+  write.csv(here("fit_fall22.csv"))
 
 
 # #https://rpubs.com/benhorvath/glm_diagnostics
