@@ -532,6 +532,7 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       # site[[j]]$n.component <- rep(igraph::count_components(inet), length(ids))
 
       # Modularity DOESN'T WORK with WEIGHTED graphs...
+      # https://igraph.discourse.group/t/output-igcommunitiesedgebetweenness/822
 
       ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - using assortnet in separate script
 
