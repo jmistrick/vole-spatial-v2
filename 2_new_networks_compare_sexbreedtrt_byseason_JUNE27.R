@@ -30,17 +30,17 @@ rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
   ## NOTE ## all DP, DT, or S animals are still in the fulltrap dataset
-# fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
-#   filter(month != "may") %>% #drop may data since not all sites had captures
-#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
-#   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
-#   drop_na(season_breeder)
-
-fulltrap <- readRDS(file = "fulltrap22_05.10.23.rds") %>%
+fulltrap <- readRDS(file = "fulltrap21_05.10.23.rds") %>%
   filter(month != "may") %>% #drop may data since not all sites had captures
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
   drop_na(season_breeder)
+
+# fulltrap <- readRDS(file = "fulltrap22_05.10.23.rds") %>%
+#   filter(month != "may") %>% #drop may data since not all sites had captures
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove may
+#   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign then a HR)
+#   drop_na(season_breeder)
 
 
 #pull all the traps and their x, y coordinates, save as df with (trapID, x, y)
@@ -142,6 +142,93 @@ source(here("wanelik_farine_functions.R"))
     #yes
 
 
+    library(visreg)
+    library(cowplot)
+    library(ggtext)
+
+    sex <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
+                  gg=TRUE, overlay=TRUE) +
+      scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+      scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+      scale_color_manual(values=c("#f282a7", "#00d0ff")) +
+      scale_fill_manual(values=c("#f282a750", "#00d0ff50")) +
+      theme_half_open() +
+      theme(legend.position = "bottom",
+            plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
+      labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+      annotate(geom = "text", x=2.5, y=.85, size = 6,
+               label = paste("p < 0.001" )) +
+      annotate(geom = "text", x=2.5, y=.9, size = 6,
+               label = paste("OR =",
+                             round( exp(coef(summary(fit.summer))[8,1]), digits=3) )) +
+      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+                 size=3, alpha=0.15, shape=16)
+
+    #by repro
+    repro <- visreg(fit.summer, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
+                    gg=TRUE, overlay=TRUE) +
+      scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+      scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+      scale_color_manual(values=c("#8b64b9", "#e8ac65")) +
+      scale_fill_manual(values=c("#8b64b950", "#e8ac6550")) +
+      theme_half_open() +
+      theme(legend.position = "bottom",
+            plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
+      labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+      annotate(geom = "text", x=2.5, y=.85, size = 6,
+               label = paste("p < 0.001")) +
+      annotate(geom = "text", x=2.5, y=.9, size = 6,
+               label = paste("OR =",
+                             round( exp(coef(summary(fit.summer))[9,1]), digits=3) )) +
+      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+                 size=3, alpha=0.15, shape=16)
+
+    #by food
+    food <- visreg(fit.summer, "Dist.log", by="food_trt", scale='response', rug=FALSE,
+                   gg=TRUE, overlay=TRUE) +
+      scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+      scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+      scale_color_manual(values=c("#794624", "#68b63e")) +
+      scale_fill_manual(values=c("#79462450", "#68b63e50")) +
+      theme_half_open() +
+      theme(legend.position = "bottom",
+            plot.margin = margin(t = 20, r = 20, b = 10, l = 10, unit = "pt")) +
+      labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+      annotate(geom = "text", x=2.5, y=.85, size = 6,
+               label = paste("p < 0.001")) +
+      annotate(geom = "text", x=2.5, y=.9, size = 6,
+               label = paste("OR =",
+                             round( exp(coef(summary(fit.summer))[10,1]), digits=3) )) +
+      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+                 size=3, alpha=0.15, shape=16)
+
+    #by worms
+    worms <- visreg(fit.summer, "Dist.log", by="helm_trt", scale='response', rug=FALSE,
+                    gg=TRUE, overlay=TRUE) +
+      scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+      scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+      scale_color_manual(values=c("#808080", "#ffe048")) +
+      scale_fill_manual(values=c("#80808070", "#ffe04850")) +
+      theme_half_open() +
+      theme(legend.position = "bottom",
+            axis.title = element_text(size=12),
+            plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
+      labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+      annotate(geom = "text", x=2.5, y=.85, size = 6,
+               label = paste("p =",
+                             round( coef(summary(fit.summer))[11,4], digits=3) )) +
+      annotate(geom = "text", x=2.5, y=.9, size = 6,
+               label = paste("OR =",
+                             round( exp(coef(summary(fit.summer))[11,1]), digits=3) )) +
+      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt), size=3, alpha=0.1, shape=16)
+
+
+    png(filename="fitsummer21.png", height=12, width=16, units="in", res=600)
+    plot_grid(sex, repro, food, worms,
+              labels=NULL, nrow=2)
+    dev.off()
+
+
 ##-----------------------------------------------------------------------------------------------------
 
     ##------------ CALCULATE DISTANCES FOR EVERYONE, RUN GLM BY SEX,BREEDER,TRT ------------------------
@@ -220,6 +307,100 @@ source(here("wanelik_farine_functions.R"))
     ################# SHOULD THERE BE AN INTERACTION of SEX/TRT/BREED and DIST?
 
 
+library(visreg) #https://pbreheny.github.io/visreg/articles/web/overlay.html
+library(cowplot)
+library(ggtext)
+#by sex
+# visreg(fit.fall, "Dist.log", by="sex", overlay=TRUE,
+#        xlab="Log Distance from Center", ylab="Log Odds (Detection)")
+sex <- visreg(fit.fall, "Dist.log", by="sex", scale='response', rug=FALSE,
+       gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+  scale_color_manual(values=c("#f282a7", "#00d0ff")) +
+  scale_fill_manual(values=c("#f282a750", "#00d0ff50")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
+  labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+  annotate(geom = "text", x=2.5, y=.85, size = 6,
+           label = paste("p =",
+                         round( coef(summary(fit.fall))[8,4], digits=3) )) +
+  annotate(geom = "text", x=2.5, y=.9, size = 6,
+           label = paste("OR =",
+                         round( exp(coef(summary(fit.fall))[8,1]), digits=3) )) +
+  #https://github.com/pbreheny/visreg/issues/56 #color points by group separately
+  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+             size=3, alpha=0.15, shape=16)
+
+#by repro
+repro <- visreg(fit.fall, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
+       gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+  scale_color_manual(values=c("#8b64b9", "#e8ac65")) +
+  scale_fill_manual(values=c("#8b64b950", "#e8ac6550")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
+  labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+  annotate(geom = "text", x=2.5, y=.85, size = 6,
+           label = paste("p =",
+                         round( coef(summary(fit.fall))[9,4], digits=3) )) +
+  annotate(geom = "text", x=2.5, y=.9, size = 6,
+           label = paste("OR =",
+                         round( exp(coef(summary(fit.fall))[9,1]), digits=3) )) +
+  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+             size=3, alpha=0.15, shape=16)
+
+#by food
+food <- visreg(fit.fall, "Dist.log", by="food_trt", scale='response', rug=FALSE,
+       gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+  scale_color_manual(values=c("#794624", "#68b63e")) +
+  scale_fill_manual(values=c("#79462450", "#68b63e50")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        axis.title = element_text(size=16),
+        plot.margin = margin(t = 20, r = 20, b = 10, l = 10, unit = "pt")) +
+  labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+  annotate(geom = "text", x=2.5, y=.85, size = 6,
+           label = paste("p =",
+                         round( coef(summary(fit.fall))[10,4], digits=3) )) +
+  annotate(geom = "text", x=2.5, y=.9, size = 6,
+           label = paste("OR =",
+                         round( exp(coef(summary(fit.fall))[10,1]), digits=3) )) +
+  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+             size=3, alpha=0.15, shape=16)
+
+#by worms
+worms <- visreg(fit.fall, "Dist.log", by="helm_trt", scale='response', rug=FALSE,
+       gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+  scale_color_manual(values=c("#808080", "#ffe048")) +
+  scale_fill_manual(values=c("#80808070", "#ffe04850")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
+  labs(x="Log Distance from Activity Center", y="Probability of Capture") +
+  annotate(geom = "text", x=2.5, y=.85, size = 6,
+           label = paste("p =",
+                         round( coef(summary(fit.fall))[11,4], digits=3) )) +
+  annotate(geom = "text", x=2.5, y=.9, size = 6,
+           label = paste("OR =",
+                         round( exp(coef(summary(fit.fall))[11,1]), digits=3) )) +
+  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
+             size=3, alpha=0.1, shape=16)
+
+
+png(filename="fitfall21.png", height=12, width=16, units="in", res=600)
+plot_grid(sex, repro, food, worms,
+          labels=NULL, nrow=2)
+dev.off()
+
+
 
 
 
@@ -233,7 +414,7 @@ fit.summer %>% tbl_regression(exponentiate = TRUE,
       bold_labels() %>%
       italicize_levels() %>%
   gtsummary::as_tibble() %>%
-  write.csv(here("fit_summer22.csv"))
+  write.csv(here("fit_summer21.csv"))
 
 fit.fall %>% tbl_regression(exponentiate = TRUE,
                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
@@ -241,7 +422,7 @@ fit.fall %>% tbl_regression(exponentiate = TRUE,
       bold_labels() %>%
       italicize_levels() %>% #stop here to get HTML output in RStudio
   gtsummary::as_tibble() %>%
-  write.csv(here("fit_fall22.csv"))
+  write.csv(here("fit_fall21.csv"))
 
 
 # #https://rpubs.com/benhorvath/glm_diagnostics
