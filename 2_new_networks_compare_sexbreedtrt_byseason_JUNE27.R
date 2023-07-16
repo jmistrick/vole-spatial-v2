@@ -146,7 +146,8 @@ source(here("wanelik_farine_functions.R"))
     library(cowplot)
     library(ggtext)
 
-    sex <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
+
+  sex <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
                   gg=TRUE, overlay=TRUE) +
       scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
       scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
@@ -154,6 +155,7 @@ source(here("wanelik_farine_functions.R"))
       scale_fill_manual(values=c("#f282a750", "#00d0ff50")) +
       theme_half_open() +
       theme(legend.position = "bottom",
+            axis.title = element_text(size=16),
             plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
       labs(x="Log Distance from Activity Center", y="Probability of Capture") +
       annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -161,8 +163,11 @@ source(here("wanelik_farine_functions.R"))
       annotate(geom = "text", x=2.5, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[8,1]), digits=3) )) +
-      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
-                 size=3, alpha=0.15, shape=16)
+      # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+      #            size=3, alpha=0.15, shape=16)
+    geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+                width=0, height=0.025,
+               size=3, alpha=0.2, shape=16)
 
     #by repro
     repro <- visreg(fit.summer, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
@@ -173,6 +178,7 @@ source(here("wanelik_farine_functions.R"))
       scale_fill_manual(values=c("#8b64b950", "#e8ac6550")) +
       theme_half_open() +
       theme(legend.position = "bottom",
+            axis.title = element_text(size=16),
             plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
       labs(x="Log Distance from Activity Center", y="Probability of Capture") +
       annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -180,8 +186,11 @@ source(here("wanelik_farine_functions.R"))
       annotate(geom = "text", x=2.5, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[9,1]), digits=3) )) +
-      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
-                 size=3, alpha=0.15, shape=16)
+      # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+      #            size=3, alpha=0.15, shape=16)
+      geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+                  width=0, height=0.025,
+                  size=3, alpha=0.2, shape=16)
 
     #by food
     food <- visreg(fit.summer, "Dist.log", by="food_trt", scale='response', rug=FALSE,
@@ -192,6 +201,7 @@ source(here("wanelik_farine_functions.R"))
       scale_fill_manual(values=c("#79462450", "#68b63e50")) +
       theme_half_open() +
       theme(legend.position = "bottom",
+            axis.title = element_text(size=16),
             plot.margin = margin(t = 20, r = 20, b = 10, l = 10, unit = "pt")) +
       labs(x="Log Distance from Activity Center", y="Probability of Capture") +
       annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -199,8 +209,11 @@ source(here("wanelik_farine_functions.R"))
       annotate(geom = "text", x=2.5, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[10,1]), digits=3) )) +
-      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
-                 size=3, alpha=0.15, shape=16)
+      # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+      #            size=3, alpha=0.15, shape=16)
+      geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+                  width=0, height=0.025,
+                  size=3, alpha=0.2, shape=16)
 
     #by worms
     worms <- visreg(fit.summer, "Dist.log", by="helm_trt", scale='response', rug=FALSE,
@@ -211,7 +224,7 @@ source(here("wanelik_farine_functions.R"))
       scale_fill_manual(values=c("#80808070", "#ffe04850")) +
       theme_half_open() +
       theme(legend.position = "bottom",
-            axis.title = element_text(size=12),
+            axis.title = element_text(size=16),
             plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
       labs(x="Log Distance from Activity Center", y="Probability of Capture") +
       annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -220,10 +233,14 @@ source(here("wanelik_farine_functions.R"))
       annotate(geom = "text", x=2.5, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[11,1]), digits=3) )) +
-      geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt), size=3, alpha=0.1, shape=16)
+      # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
+      #            size=3, alpha=0.1, shape=16)
+      geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
+                  width=0, height=0.025,
+                  size=3, alpha=0.2, shape=16)
 
 
-    png(filename="fitsummer21.png", height=12, width=16, units="in", res=600)
+    png(filename="fitsummer21_jitter.png", height=12, width=16, units="in", res=600)
     plot_grid(sex, repro, food, worms,
               labels=NULL, nrow=2)
     dev.off()
@@ -321,6 +338,7 @@ sex <- visreg(fit.fall, "Dist.log", by="sex", scale='response', rug=FALSE,
   scale_fill_manual(values=c("#f282a750", "#00d0ff50")) +
   theme_half_open() +
   theme(legend.position = "bottom",
+        axis.title = element_text(size=16),
         plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
   labs(x="Log Distance from Activity Center", y="Probability of Capture") +
   annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -330,8 +348,11 @@ sex <- visreg(fit.fall, "Dist.log", by="sex", scale='response', rug=FALSE,
            label = paste("OR =",
                          round( exp(coef(summary(fit.fall))[8,1]), digits=3) )) +
   #https://github.com/pbreheny/visreg/issues/56 #color points by group separately
-  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
-             size=3, alpha=0.15, shape=16)
+  # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+  #            size=3, alpha=0.15, shape=16)
+  geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+              width=0, height=0.025,
+              size=3, alpha=0.2, shape=16)
 
 #by repro
 repro <- visreg(fit.fall, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
@@ -342,6 +363,7 @@ repro <- visreg(fit.fall, "Dist.log", by="season_breeder", scale="response", rug
   scale_fill_manual(values=c("#8b64b950", "#e8ac6550")) +
   theme_half_open() +
   theme(legend.position = "bottom",
+        axis.title = element_text(size=16),
         plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
   labs(x="Log Distance from Activity Center", y="Probability of Capture") +
   annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -350,8 +372,11 @@ repro <- visreg(fit.fall, "Dist.log", by="season_breeder", scale="response", rug
   annotate(geom = "text", x=2.5, y=.9, size = 6,
            label = paste("OR =",
                          round( exp(coef(summary(fit.fall))[9,1]), digits=3) )) +
-  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
-             size=3, alpha=0.15, shape=16)
+  # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+  #            size=3, alpha=0.15, shape=16)
+  geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+              width=0, height=0.025,
+              size=3, alpha=0.2, shape=16)
 
 #by food
 food <- visreg(fit.fall, "Dist.log", by="food_trt", scale='response', rug=FALSE,
@@ -371,8 +396,11 @@ food <- visreg(fit.fall, "Dist.log", by="food_trt", scale='response', rug=FALSE,
   annotate(geom = "text", x=2.5, y=.9, size = 6,
            label = paste("OR =",
                          round( exp(coef(summary(fit.fall))[10,1]), digits=3) )) +
-  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
-             size=3, alpha=0.15, shape=16)
+  # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+  #            size=3, alpha=0.15, shape=16)
+  geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+              width=0, height=0.025,
+              size=3, alpha=0.2, shape=16)
 
 #by worms
 worms <- visreg(fit.fall, "Dist.log", by="helm_trt", scale='response', rug=FALSE,
@@ -383,6 +411,7 @@ worms <- visreg(fit.fall, "Dist.log", by="helm_trt", scale='response', rug=FALSE
   scale_fill_manual(values=c("#80808070", "#ffe04850")) +
   theme_half_open() +
   theme(legend.position = "bottom",
+        axis.title = element_text(size=16),
         plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
   labs(x="Log Distance from Activity Center", y="Probability of Capture") +
   annotate(geom = "text", x=2.5, y=.85, size = 6,
@@ -391,11 +420,14 @@ worms <- visreg(fit.fall, "Dist.log", by="helm_trt", scale='response', rug=FALSE
   annotate(geom = "text", x=2.5, y=.9, size = 6,
            label = paste("OR =",
                          round( exp(coef(summary(fit.fall))[11,1]), digits=3) )) +
-  geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
-             size=3, alpha=0.1, shape=16)
+  # geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
+  #            size=3, alpha=0.1, shape=16)
+  geom_jitter(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
+              width=0, height=0.025,
+              size=3, alpha=0.2, shape=16)
 
 
-png(filename="fitfall21.png", height=12, width=16, units="in", res=600)
+png(filename="fitfall21_jitter.png", height=12, width=16, units="in", res=600)
 plot_grid(sex, repro, food, worms,
           labels=NULL, nrow=2)
 dev.off()
