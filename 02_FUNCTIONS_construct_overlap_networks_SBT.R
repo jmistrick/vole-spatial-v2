@@ -509,7 +509,18 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
       #create UNWEIGHTED NETWORK (just for binary degree)
       adjmatscaled <-ifelse(adjmat>0.01,1,0)
-      inet_bin <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+      inet_bin01 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+
+      #and for reviewer's sake, a lil sensitivity testing
+      adjmatscaled <-ifelse(adjmat>0.05,1,0)
+      inet_bin05 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+
+      adjmatscaled <-ifelse(adjmat>0.001,1,0)
+      inet_bin001 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+
+      adjmatscaled <-ifelse(adjmat>0.005,1,0)
+      inet_bin005 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+      ##end sensitivity testing##
 
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
       month <- rep(names(overlap_network_list[[i]])[j],length(ids)) #capture month
@@ -523,7 +534,11 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       # site[[j]]$avg.wt.deg <- rep(mean(site[[j]]$wt.deg), length(ids)) #calculate average wt degree for a site/occasion
 
       #binary degree (number of overlaps)
-      site[[j]]$bin.01.deg <- igraph::degree(inet_bin)
+      site[[j]]$bin.01.deg <- igraph::degree(inet_bin01)
+
+      site[[j]]$bin.05.deg <- igraph::degree(inet_bin05)
+      site[[j]]$bin.001.deg <- igraph::degree(inet_bin001)
+      site[[j]]$bin.005.deg <- igraph::degree(inet_bin005)
 
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
       # site[[j]]$wt.n.edge <- rep(sum(E(inet)$weight), length(ids)) ##### THIS IS WEIGHTED #####
