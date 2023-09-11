@@ -66,7 +66,7 @@ source(here("02_FUNCTIONS_construct_overlap_networks_SBT.R"))
 generate_params(data = ft21,
                 params_file = "params21_STSB.rds")
 
-# params21 <- readRDS(here("params21_STSB.rds"))
+params21 <- readRDS(here("params21_STSB.rds"))
 
 create_overlap_networks(data = ft21,
                         centroids_file = "centroids21_STSB.rds",
@@ -78,7 +78,20 @@ create_overlap_networks(data = ft21,
 
 calculate_network_metrics(data=ft21,
                           networks_file = "overlapnets21_STSB.rds",
-                          netmets_file = "netmets21_STSB.rds")
+                          netmets_file = "netmets21_bindeg.rds")
+
+netmets21 <- readRDS(here("netmets21_bindeg.rds"))
+
+test %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
+  mutate(site = factor(site, levels=c("asema", "helmipollo", "hevonen",
+                                      "ketunpesa", "kiirastuli", "mustikka",
+                                      "kuoppa", "radio", "vaarinkorpi",
+                                      "janakkala", "puro", "talo"))) %>%
+  ggplot(aes(x=norm.wt.deg)) +
+  geom_histogram() +
+  facet_grid(site ~ month)
+
 
 # netmets21 <- readRDS(here("netmets21_STSB.rds"))
 
@@ -119,7 +132,10 @@ overlap_network_list <- readRDS(here("overlapnets21_STSB.rds"))
 
 ######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
+
 for(i in 1:length(overlap_network_list)) {
+
+  # set.seed(2111994)
 
   png(filename = paste("spatial_overlap_", "STSB_wt0.05byTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
       width=10 , height=3, units="in", res=600)
@@ -149,8 +165,13 @@ for(i in 1:length(overlap_network_list)) {
     # plot(g2, vertex.size=5, vertex.label=NA,
     #      main = paste(names(overlap_network_list[[i]])[j]))
 
+    #keep the layout the same
+    #https://www.kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
+    # l <- layout_with_fr(g2)
+
     #for edges of varying thickness
     plot(g2, vertex.size=5, vertex.label=NA,
+         # layout=l,
          edge.width = ((E(g2)$weight)*3),
          main = paste(names(overlap_network_list[[i]])[j]))
 
@@ -162,6 +183,8 @@ for(i in 1:length(overlap_network_list)) {
 
 
 for(i in 1:length(overlap_network_list)) {
+
+  set.seed(2111994)
 
   png(filename = paste("spatial_overlap_", "STSB_wtbyTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
       width=10 , height=3, units="in", res=600)
@@ -191,8 +214,13 @@ for(i in 1:length(overlap_network_list)) {
     # plot(g2, vertex.size=5, vertex.label=NA,
     #      main = paste(names(overlap_network_list[[i]])[j]))
 
+    #keep the layout the same
+    #https://www.kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
+    l <- layout_with_fr(g)
+
     #for edges of varying thickness
     plot(g, vertex.size=5, vertex.label=NA,
+         layout=l,
          edge.width = ((E(g)$weight)*3),
          main = paste(names(overlap_network_list[[i]])[j]))
 
