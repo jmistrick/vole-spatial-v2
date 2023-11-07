@@ -144,7 +144,7 @@ for(i in 1:length(overlap_network_list)) {
 
   for(j in 1:length(overlap_network_list[[i]])){
 
-    data <- overlap_network_list[[i]][[j]]
+    data <- overlap_network_list[[8]][[4]]
 
     #plot adj matrix for network
     g <- graph_from_adjacency_matrix(
@@ -172,8 +172,23 @@ for(i in 1:length(overlap_network_list)) {
     #for edges of varying thickness
     plot(g2, vertex.size=5, vertex.label=NA,
          # layout=l,
-         edge.width = ((E(g2)$weight)*3),
-         main = paste(names(overlap_network_list[[i]])[j]))
+         edge.width = ((E(g2)$weight)*5),
+         edge.color = "#545454",
+         main = paste(names(overlap_network_list[[5]])[3]))
+
+
+   ## Matt M-S suggestion - color edges by weight, thickness by weight
+    ##USING GGRAPH for plotting!
+    library(ggraph)
+    ggraph(g, layout="fr") +
+      geom_edge_link(aes(colour=weight, width=weight)) + # add edges to the plot (colored by weight)
+      # geom_node_label(aes(label=name)) + # add nodes to the plot
+      geom_node_point(size=7) +
+      scale_edge_width(range=c(0,3)) + #scale edge width by weight
+      scale_edge_colour_gradient(low="#F0F0F0", high="#000000") + # set the (gray)scale
+      theme_void()
+
+
 
   }
 
@@ -186,7 +201,7 @@ for(i in 1:length(overlap_network_list)) {
 
   set.seed(2111994)
 
-  png(filename = paste("spatial_overlap_", "STSB_wtbyTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("spatial_overlap_", "STSB_wtbyTHICK3_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
       width=10 , height=3, units="in", res=600)
 
   par(mfrow = c(1,5))
@@ -222,6 +237,7 @@ for(i in 1:length(overlap_network_list)) {
     plot(g, vertex.size=5, vertex.label=NA,
          layout=l,
          edge.width = ((E(g)$weight)*3),
+         edge.color = "#545454",
          main = paste(names(overlap_network_list[[i]])[j]))
 
   }
