@@ -129,6 +129,7 @@ calculate_network_metrics(data=ft22,
 
 library(ggraph)
 library(tidygraph)
+library(colorBlindness)
 
 overlap_network_list <- readRDS(here("overlapnets21_STSB.rds"))
 # overlap_network_list <- readRDS(here("overlapnets22_STSB.rds"))
@@ -141,6 +142,15 @@ metadata <- readRDS(here("fulltrap21_05.10.23.rds")) %>% ##breeders and nonbreed
 
 ######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
+### AS OF 12/8 THIS IS PLOTTING CORRECTLY - but I can't get it to print
+# maybe just create a nested list of ggplot files and then cowplot those and print?
+
+#MONTHLY centroids = - to align the points in space to monthly centroid location
+centroids <- readRDS(here("centroids21_STSB.rds")) %>%
+  rename(tag = Tag_ID) %>%
+  mutate(jitter_x = jitter(x, 20),
+         jitter_y = jitter(y, 20))
+# centroids <- readRDS(here("centroids22_STSB.rds")) %>% rename(tag = Tag_ID)
 
 for(i in 1:length(overlap_network_list)) {
 
@@ -153,10 +163,10 @@ for(i in 1:length(overlap_network_list)) {
 
   for(j in 1:length(overlap_network_list[[i]])){
 
-    data <- overlap_network_list[[i]][[j]]
+    data <- overlap_network_list[[12]][[4]]
 
-    site.id <- names(overlap_network_list[i])
-    month.id <- names(overlap_network_list[[i]][j])
+    site.id <- names(overlap_network_list[12])
+    month.id <- names(overlap_network_list[[12]][4])
 
     ## **PLOTTING FROM TIDYGRAPH OBJECT
     #metadata to get sex for node color
@@ -167,7 +177,18 @@ for(i in 1:length(overlap_network_list)) {
       drop_na(sex) %>% #didn't build networks with animals with sex=NA
       drop_na(season_breeder) %>% #didn't build networks with animals with season_breeder=NA
     ###dropping both sex and season_breeder = NA should clean up sb so there are no NAs
-      select(tag, sex, season_breeder, sb) #tag should be first column to match to adj mat
+      select(tag, sex, season_breeder, sb) %>% #tag should be first column to match to adj mat
+      arrange(tag) #make sure they're in numeric order to match adj mat
+
+    #matrix of centroid data - for node location
+    centroidmat <- centroids %>%
+      filter(site==site.id & month==month.id) %>%
+      arrange(tag) %>%
+      select(jitter_x,jitter_y) %>%
+      as.matrix()
+    #assign the row names as voleIDS just so no one gets confused
+    rownames(centroidmat) <- netmeta$tag
+
 
     ## **PLOTTING FROM TIDYGRAPH OBJECT
     #create tidygraph object from adj matrix
@@ -226,17 +247,26 @@ for(i in 1:length(overlap_network_list)) {
     # #set "sb" as vertex attribute
     # g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=netmeta$sb)
 
-    ggraph(tg, layout="fr") +
+
+      ggraph(tg, layout=centroidmat) + #set 'layout' to matrix of monthly centroids
       geom_edge_link(aes(colour=weight, width=weight, group=I(1))) + # add edges to the plot (colored by weight)
       ## even with sorting the edges by weight, they won't necessarily plot with thickest on top
         ## unless you either 1) use 'geom_edge_link0() or 2) add 'group=I(1)' to the aes call
         ## Matt M-S is a lifesaver <3
       # geom_node_label(aes(label=name)) + # add nodes to the plot
-      geom_node_point(aes(color=sb), size=7) +
+      geom_node_point(aes(fill=sb), color="black", pch=21, size=6) +
+      scale_fill_manual(values=c("#c9184a", "#ff758f", "#023e8a", "#a3d5ff"),
+                        labels=c("Female Breeder", "Female Nonbreeder", "Male Breeder", "Male Nonbreeder")) +
       scale_edge_width(range=c(0,3), guide="none") + #scale edge width by weight
       scale_edge_colour_gradient(low="#F0F0F0", high="#000000") + # set the (gray)scale
       theme_void() +
-      labs(title=paste(names(overlap_network_list[[i]])[j]))
+      labs(title=paste(names(overlap_network_list[[i]])[j]),
+           fill="Functional Group",
+           edge_colour="Spatial Overlap")
+
+    #check colors for colorblind friendly
+    # cvdPlot(plot)
+
 
     ## feed layout= a matrix with the node position - make sure it's in the same order as the nodes
     ## numeric matrix two column x, y for all the nodes
