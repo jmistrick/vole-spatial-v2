@@ -128,6 +128,7 @@ calculate_network_metrics(data=ft22,
 #######----------------- NETWORKS PLOTTING (to keel you!) -----------------------###############
 
 library(ggraph)
+library(tidygraph)
 
 overlap_network_list <- readRDS(here("overlapnets21_STSB.rds"))
 # overlap_network_list <- readRDS(here("overlapnets22_STSB.rds"))
@@ -145,17 +146,17 @@ for(i in 1:length(overlap_network_list)) {
 
   # set.seed(2111994)
 
-  png(filename = paste("spatial_overlap_", "STSB_wt0.05byTHICK_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
-      width=10 , height=3, units="in", res=600)
+  png(filename = paste("spatial_overlap_", "THEprettiest_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+      width=10, height=3, units="in", res=600)
 
   par(mfrow = c(1,5))
 
   for(j in 1:length(overlap_network_list[[i]])){
 
-    data <- overlap_network_list[[3]][[5]]
+    data <- overlap_network_list[[i]][[j]]
 
-    site.id <- names(overlap_network_list[3])
-    month.id <- names(overlap_network_list[[3]][5])
+    site.id <- names(overlap_network_list[i])
+    month.id <- names(overlap_network_list[[i]][j])
 
     ## **PLOTTING FROM TIDYGRAPH OBJECT
     #metadata to get sex for node color
@@ -173,13 +174,13 @@ for(i in 1:length(overlap_network_list)) {
     tidyg <- as_tbl_graph(data, directed=FALSE) %>% left_join(netmeta, by=c('name'='tag'))
     tg <- tidyg %>% activate(edges) %>% arrange(weight) %>% filter(weight>0)
 
-    # **PLOTTING FROM iGRAPH OBJECT
-    #create graph from adj matrix (igraph verbs)
-    g <- graph_from_adjacency_matrix(
-      data,
-      mode = c("undirected"),
-      weighted = TRUE,
-      diag = FALSE)
+    # # **PLOTTING FROM iGRAPH OBJECT
+    # #create graph from adj matrix (igraph verbs)
+    # g <- graph_from_adjacency_matrix(
+    #   data,
+    #   mode = c("undirected"),
+    #   weighted = TRUE,
+    #   diag = FALSE)
 
     #--------------ignore this------------------
     # #for thresholded edges option1
@@ -209,48 +210,43 @@ for(i in 1:length(overlap_network_list)) {
    ## Matt M-S suggestion - color edges by weight, thickness by weight
     ##USING GGRAPH for plotting!
 
-    # **PLOTTING FROM iGRAPH OBJECT
-    #metadata to get sex for node color
-    #subset metadata
-    netmeta <- metadata %>% #starts with fulltrap, need to get down to a 'traits' version
-      filter(site==site.id & month==month.id) %>%
-      group_by(tag) %>% slice(1) %>% #one entry per vole per month
-      drop_na(sex) %>% #didn't build networks with animals with sex=NA
-      drop_na(season_breeder) #didn't build networks with animals with season_breeder=NA
-    ###dropping both sex and season_breeder = NA should clean up sb so there are no NAs
-
-    #set "sex" as a vertex attribute
-    g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=netmeta$sex)
-    #set "breeder" as a vertex attribute
-    g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=netmeta$season_breeder)
-    #set "sb" as vertex attribute
-    g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=netmeta$sb)
+    # # **PLOTTING FROM iGRAPH OBJECT
+    # #metadata to get sex for node color
+    # #subset metadata
+    # netmeta <- metadata %>% #starts with fulltrap, need to get down to a 'traits' version
+    #   filter(site==site.id & month==month.id) %>%
+    #   group_by(tag) %>% slice(1) %>% #one entry per vole per month
+    #   drop_na(sex) %>% #didn't build networks with animals with sex=NA
+    #   drop_na(season_breeder) #didn't build networks with animals with season_breeder=NA
+    # ###dropping both sex and season_breeder = NA should clean up sb so there are no NAs
+    # #set "sex" as a vertex attribute
+    # g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=netmeta$sex)
+    # #set "breeder" as a vertex attribute
+    # g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=netmeta$season_breeder)
+    # #set "sb" as vertex attribute
+    # g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=netmeta$sb)
 
     ggraph(tg, layout="fr") +
-      geom_edge_link(aes(colour=weight, width=weight)) + # add edges to the plot (colored by weight)
+      geom_edge_link(aes(colour=weight, width=weight, group=I(1))) + # add edges to the plot (colored by weight)
+      ## even with sorting the edges by weight, they won't necessarily plot with thickest on top
+        ## unless you either 1) use 'geom_edge_link0() or 2) add 'group=I(1)' to the aes call
+        ## Matt M-S is a lifesaver <3
       # geom_node_label(aes(label=name)) + # add nodes to the plot
-      geom_node_point(aes(color=sex), size=7) +
+      geom_node_point(aes(color=sb), size=7) +
       scale_edge_width(range=c(0,3), guide="none") + #scale edge width by weight
       scale_edge_colour_gradient(low="#F0F0F0", high="#000000") + # set the (gray)scale
-      theme_void()
+      theme_void() +
+      labs(title=paste(names(overlap_network_list[[i]])[j]))
+
+    ## feed layout= a matrix with the node position - make sure it's in the same order as the nodes
+    ## numeric matrix two column x, y for all the nodes
+    ## ?? arc-ed edges or jitter to points to avoid overlap
 
   }
 
   dev.off()
 
 }
-
-
-
-########################
-#random shit 11.8.23 - remove this for cleaner code later
-
-library(tidygraph)
-tidyg <- as_tbl_graph(data)
-tg <- tidyg %>% activate(edges) %>% arrange(weight)
-
-tidyg %>% activate(edges)
-tg %>% activate(edges)
 
 
 
