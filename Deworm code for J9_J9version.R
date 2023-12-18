@@ -9,8 +9,8 @@
 #load packages
 library(here)
 library(tidyverse)
-library(lme4)
-library(nlme)
+# library(lme4)
+# library(nlme)
 
 #clear environment
 rm(list = ls())
@@ -67,6 +67,40 @@ i.prepost <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post 
                   data = subset(all2021FEC, nematode.epg > 0)) #n=437
 summary(i.prepost)
 
+## HOWEVER, based on AIC - the model with all the predictors is not the best fit
+dat <- all2021FEC %>% drop_na(sex) %>% drop_na(season_breeder) %>% drop_na(head)
+im1 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
+                  data = subset(dat, nematode.epg > 0)) #n=437
+im2 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + (1|tag),
+                  data = subset(dat, nematode.epg > 0)) #n=437
+im3 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + season_breeder + (1|tag),
+                  data = subset(dat, nematode.epg > 0)) #n=437
+im4 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + scale(head) + (1|tag),
+            data = subset(dat, nematode.epg > 0)) #n=437
+AIC(im1, im2, im3, im4) #m1 and m2 are best and equivalent
+
+
+pm1 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
+                   data = dat, family = binomial) #n=1031
+pm2 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + (1|tag),
+                   data = dat, family = binomial) #n=1031
+pm3 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                   data = dat, family = binomial) #n=1031
+pm4 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + scale(head) + (1|tag),
+             data = dat, family = binomial) #n=1031
+pm5 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + scale(head) + (1|tag),
+             data = dat, family = binomial) #n=1031
+AIC(pm1, pm2, pm3, pm4, pm5) #m2 and m3 are best and equivalent
+
+## so based on this, the best fit models for presence vs intensity differ,
+  #best for P=occasion + sex + scale(head)
+  #best for I=[base model]   OR   I=sex + occasion
+
+
+## Essentially - the best pvalue for P is sex+occasion+season_breeder but
+                #the best fit model is sex+occasion+scale(head)
+## while the best fit for I is the base model or sex+occasion and
+        #the best pvalue is base model (worst pvalue is sex+occasion+scale(head))
 
 
 
