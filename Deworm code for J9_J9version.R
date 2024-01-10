@@ -9,8 +9,9 @@
 #load packages
 library(here)
 library(tidyverse)
-# library(lme4)
+library(lme4)
 # library(nlme)
+library(lmerTest) #like lme4 but with pvalues
 
 #clear environment
 rm(list = ls())
@@ -19,35 +20,83 @@ rm(list = ls())
 
 #meta data for FEC data
 moremetadata <- readRDS(here("fulltrap21_05.10.23.rds")) %>% ##breeders and nonbreeders are here
-  group_by(tag, month) %>% slice(1) %>%
+  group_by(samp_id) %>% slice(1) %>%
   mutate(tag = as.numeric(tag)) %>%
-  dplyr::select(c("month", "tag", "head", "current_breeder", "season_breeder"))
+  dplyr::select(c("site", "trt", "food_trt", "helm_trt",
+                  "month", "occasion",
+                  "tag", "samp_id", "head", "sex", "current_breeder", "season_breeder"))
 
 #FEC data for 2021
 all2021FEC <- read_csv(here("Helminth Data.csv")) %>%
-  mutate(site = as.factor(site),
-         food_trt = as.factor(food_trt),
-         helm_trt = as.factor(helm_trt),
-         occasion = as.numeric(case_when((month == "may") ~ 1,
-                                         (month == "june") ~ 2,
-                                         (month == "july") ~ 3,
-                                         (month == "aug") ~ 4,
-                                         (month == "sept") ~ 5,
-                                         (month == "oct") ~ 6,
-                                         TRUE ~ NA))) %>%
+  select("samp_id", "nematode.y.n", "nematode.epg") %>%
+  # mutate(site = as.factor(site),
+  #        food_trt = as.factor(food_trt),
+  #        helm_trt = as.factor(helm_trt),
+  #        occasion = as.numeric(case_when((month == "may") ~ 1,
+  #                                        (month == "june") ~ 2,
+  #                                        (month == "july") ~ 3,
+  #                                        (month == "aug") ~ 4,
+  #                                        (month == "sept") ~ 5,
+  #                                        (month == "oct") ~ 6,
+  #                                        TRUE ~ NA))) %>%
   #remove three duplicate entries (details to follow)
   filter(samp_id != 274) %>% #vole 226170 sampled twice in July, remove second sample ID (eggs detected in both samples)
   filter(samp_id != 340) %>% #vole 219980 sampled twice in Aug, remove first sample ID (no eggs in first sample, eggs in second)
   distinct(samp_id, .keep_all = TRUE) %>% #remove duplicate entry for sample id 508
+  left_join(moremetadata, by=c("samp_id")) %>%
   group_by(tag) %>%
-  left_join(moremetadata, by=c("tag", "month")) %>%
+  arrange(occasion, .by_group = TRUE) %>%
   mutate(capt_nbr = row_number()) %>% #add column for the capture number (ie the first, second, third capture of given vole)
   mutate(pre_post = as.factor(case_when(capt_nbr == 1 ~ "pre",
                                          capt_nbr > 1 ~ "post"))) %>%
   ungroup()
 
-############################################################################################
 
+
+#meta data for FEC data
+newmeta <- readRDS(here("fulltrap21_05.10.23.rds")) %>% ##breeders and nonbreeders are here
+  group_by(samp_id) %>% slice(1) %>%
+  dplyr::select(c("site", "trt", "food_trt", "helm_trt",
+                  "season", "month", "occasion",
+                  "tag", "samp_id", "sex", "current_breeder", "season_breeder",
+                  "head"))
+
+#better FEC data? from Sarah Dec 19 2023
+FECdata <- read_csv(here("FEC data for Janine 12-19-23.csv"))
+
+newFEC <- FECdata %>%
+  filter("exclude from FEC analysis" != 1) %>% #remove samples with ?weird tube mass?
+  rename("samp_id" = "Sample ID",
+         "nematode.epg" = "nematode epg") %>%
+  select(c("samp_id", "nematode.epg", "nematode.y.n")) %>%
+  inner_join(newmeta, by="samp_id") %>%
+  drop_na(nematode.epg) %>% drop_na(nematode.y.n) %>%
+  mutate(nematode.epg = as.numeric(nematode.epg),
+       nematode.y.n = as.factor(nematode.y.n)) %>%
+  #remove three duplicate entries (details to follow)
+  filter(samp_id != 274) %>% #vole 226170 sampled twice in July, remove second sample ID (eggs detected in both samples)
+  filter(samp_id != 340) %>% #vole 219980 sampled twice in Aug, remove first sample ID (no eggs in first sample, eggs in second)
+  filter(samp_id != 712) %>% #vole 219809 was sampled twice in Sept, remove first sample ID (eggs detected in both samples)
+  filter(samp_id != 64) %>% #remove negative FEC value?
+  group_by(tag) %>% arrange(occasion, .by_group = TRUE) %>%
+  mutate(capt_nbr = row_number()) %>% #add column for the capture number (ie the first, second, third capture of given vole)
+  mutate(pre_post = as.factor(case_when(capt_nbr == 1 ~ "pre",
+                                        capt_nbr > 1 ~ "post"))) %>%
+  drop_na(sex) %>% drop_na(season_breeder)
+
+  # mutate(diff = (nematode.epg - helig.epg)) %>% #yes, helig and nematode are different
+  # filter(diff > 0)
+
+
+jasmine <- all2021FEC %>% select(tag, samp_id, month, nematode.epg, nematode.y.n)
+sarah <-  newFEC %>% select(tag, samp_id, month, nematode.epg, nematode.y.n) %>%
+  mutate(tag = as.numeric(tag))
+
+check <- full_join(sarah, jasmine, by=c("tag","samp_id","month")) %>% arrange(tag, month, samp_id) %>%
+  mutate(diff = nematode.epg.x - nematode.epg.y) %>%
+  filter(diff >0)
+
+############################################################################################
 
 
 
@@ -58,49 +107,168 @@ all2021FEC <- read_csv(here("Helminth Data.csv")) %>%
 # (deworm:prepost is the focal predictor)
 #report the presence:
 #p = presence
-p.prepost <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
-                   data = all2021FEC, family = binomial) #n=1031
+#adjust the optimizer: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
+p.prepost <- lme4::glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                   data = all2021FEC, family = binomial,
+                   glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))) #n=1020 (would be 1031 but missing sex, repro data for some)
+
+NEWp.prepost <- lme4::glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                         data = newFEC, family = binomial,
+                         glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+
 summary(p.prepost)
+summary(NEWp.prepost)
 #and the intensity (only count >0)
 ## run it on only counts with eggs (intensity)
-i.prepost <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
-                  data = subset(all2021FEC, nematode.epg > 0)) #n=437
+i.prepost <- lmerTest::lmer(log(nematode.epg) ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                  data = subset(all2021FEC, nematode.epg > 0)) #n=433 (would be 437 but missing sex, repro data for some)
+
+NEWi.prepost <- lmerTest::lmer(log(nematode.epg) ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                            data = subset(newFEC, nematode.epg > 0))
+
 summary(i.prepost)
-
-## HOWEVER, based on AIC - the model with all the predictors is not the best fit
-dat <- all2021FEC %>% drop_na(sex) %>% drop_na(season_breeder) %>% drop_na(head)
-im1 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
-                  data = subset(dat, nematode.epg > 0)) #n=437
-im2 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + (1|tag),
-                  data = subset(dat, nematode.epg > 0)) #n=437
-im3 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + season_breeder + (1|tag),
-                  data = subset(dat, nematode.epg > 0)) #n=437
-im4 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + scale(head) + (1|tag),
-            data = subset(dat, nematode.epg > 0)) #n=437
-AIC(im1, im2, im3, im4) #m1 and m2 are best and equivalent
+summary(NEWi.prepost)
 
 
-pm1 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
-                   data = dat, family = binomial) #n=1031
-pm2 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + (1|tag),
-                   data = dat, family = binomial) #n=1031
-pm3 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
-                   data = dat, family = binomial) #n=1031
-pm4 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + scale(head) + (1|tag),
-             data = dat, family = binomial) #n=1031
-pm5 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + scale(head) + (1|tag),
-             data = dat, family = binomial) #n=1031
-AIC(pm1, pm2, pm3, pm4, pm5) #m2 and m3 are best and equivalent
+#summary tables
 
-## so based on this, the best fit models for presence vs intensity differ,
-  #best for P=occasion + sex + scale(head)
-  #best for I=[base model]   OR   I=sex + occasion
+#summary table of mixed model output
+#https://cran.r-project.org/web/packages/sjPlot/vignettes/tab_mixed.html
+library(sjPlot)
+#save it https://stackoverflow.com/questions/67280933/how-to-save-the-output-of-tab-model
+tab_model(p.prepost, file="p.prepost_summary.doc")
+tab_model(i.prepost, file="i.prepost_summary.doc")
 
 
-## Essentially - the best pvalue for P is sex+occasion+season_breeder but
-                #the best fit model is sex+occasion+scale(head)
-## while the best fit for I is the base model or sex+occasion and
-        #the best pvalue is base model (worst pvalue is sex+occasion+scale(head))
+
+## YEAh, whatever - ignore this mostly, just pick a good model for P based on biology and make the I model the same
+# ## HOWEVER, based on AIC - the model with all the predictors is not the best fit
+# ## a rather non-scientific (ie no model selection, not a full AIC comparison)
+# dat <- all2021FEC %>% drop_na(sex) %>% drop_na(season_breeder) %>% drop_na(head)
+# im1 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
+#                   data = subset(dat, nematode.epg > 0)) #n=437
+# im2 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + (1|tag),
+#                   data = subset(dat, nematode.epg > 0)) #n=437
+# im3 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + season_breeder + (1|tag),
+#                   data = subset(dat, nematode.epg > 0)) #n=437
+# im4 <- lmer(log(nematode.epg+1) ~ helm_trt + pre_post + helm_trt:pre_post + sex + occasion + scale(head) + (1|tag),
+#             data = subset(dat, nematode.epg > 0)) #n=437
+# AIC(im1, im2, im3, im4) #m1 and m2 are best and equivalent
+#
+# pm1 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + (1|tag),
+#                    data = dat, family = binomial) #n=1031
+# pm2 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + (1|tag),
+#                    data = dat, family = binomial) #n=1031
+# pm3 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+#                    data = dat, family = binomial) #n=1031
+# pm4 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + scale(head) + (1|tag),
+#              data = dat, family = binomial) #n=1031
+# pm5 <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + scale(head) + (1|tag),
+#              data = dat, family = binomial) #n=1031
+# AIC(pm1, pm2, pm3, pm4, pm5) #m2 and m3 are best and equivalent
+#
+# ## so based on this, the best fit models for presence vs intensity differ,
+#   #best for P=occasion + sex + scale(head)
+#   #best for I=[base model]   OR   I=sex + occasion
+#
+# ## Essentially - the best pvalue for P is sex+occasion+season_breeder but
+#                 #the best fit model is sex+occasion+scale(head)
+# ## while the best fit for I is the base model or sex+occasion and
+#         #the best pvalue is base model (worst pvalue is sex+occasion+scale(head))
+
+
+
+## more new stuff Jan 9 2024 - visualize the interaction effects
+
+library(visreg) #https://pbreheny.github.io/visreg/articles/web/overlay.html
+library(cowplot)
+library(ggtext)
+
+# #plot looks more like boxplots if pre_post is categorical
+# visreg(p.prepost, "pre_post", by="helm_trt", overlay=TRUE,
+#        xlab="Treatment Stage", ylab="Log Odds (Infected)")
+
+# #change pre_post to numeric to get a regression line
+newFEC.num <- newFEC %>% mutate(pre_post = as.numeric(pre_post))
+p.prepost.num <- lme4::glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                           data = newFEC.num, family = binomial,
+                           glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000)))
+# visreg(p.prepost.num, "pre_post", by="helm_trt", overlay=TRUE,
+#        xlab="Treatment Stage", ylab="Log Odds (Infected)")
+
+#the same (continuous pre_post), but prettier
+visreg(p.prepost.num, "pre_post", by="helm_trt", scale='response', rug=FALSE,
+                gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.03,0.05))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.02,0.05))) +
+  scale_color_manual(values=c("#808080", "#ffe048")) +
+  scale_fill_manual(values=c("#80808070", "#ffe04850")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        axis.title = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        axis.text.y = element_text(size=16),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
+  labs(x="Treatment Stage", y="Likelihood of Helminth Infection") +
+  annotate(geom = "text", x=2, y=.81, size = 6,
+           label = paste("p =",
+                         round( coef(summary(p.prepost.num))[7,4], digits=3) )) +
+  annotate(geom = "text", x=2, y=.87, size = 6,
+           label = paste("OR =",
+                         round( exp(coef(summary(p.prepost.num))[7,1]), digits=3) )) +
+  geom_jitter(data=newFEC.num, aes(x=pre_post, y=nematode.y.n, color=helm_trt),
+              width=0.1, height=0.05,
+              size=3, alpha=0.2, shape=16)
+
+
+# #again, looks like a boxplot if pre_post is categorical
+# visreg(i.prepost.lmer, "pre_post", by="helm_trt", overlay=TRUE,
+#        xlab="Treatment Stage", ylab="Infection Intensity ( ln(EPG) )")
+
+#pre_post as numeric to look like a regression line
+#visreg doesn't like it when the model has a subset command in it #https://github.com/pbreheny/visreg/issues/99
+witheggs2021FEC.num <- subset(newFEC.num, nematode.epg > 0)
+i.prepost.num <- lmerTest::lmer(log(nematode.epg) ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
+                  data = witheggs2021FEC.num)
+# visreg(i.prepost.num, "pre_post", by="helm_trt", overlay=TRUE,
+#        xlab="Treatment Stage", ylab="Infection Intensity ( ln(EPG) )", gg=TRUE, scale="response")
+
+#the same (continuous pre_post), but prettier
+visreg(i.prepost.num, "pre_post", by="helm_trt", scale='response', rug=FALSE,
+       gg=TRUE, overlay=TRUE) +
+  scale_y_continuous(expand = expansion(mult=c(0.03,0.05))) + #controls extra white space on axes (cowplot vignette)
+  scale_x_continuous(expand = expansion(mult=c(0.02,0.05))) +
+  scale_color_manual(values=c("#808080", "#ffe048")) +
+  scale_fill_manual(values=c("#80808070", "#ffe04850")) +
+  theme_half_open() +
+  theme(legend.position = "bottom",
+        axis.title = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 30, r = 0, b = 0, l = 0)),
+        axis.text.y = element_text(size=16),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin = margin(t = 20, r = 10, b = 10, l = 20, unit = "pt")) +
+  labs(x="Treatment Stage", y="Infection Intensity ( ln(EPG) )") +
+  annotate(geom = "text", x=1.9, y=4.3, size = 6,
+           label = paste("p =",
+                         round( coef(summary(i.prepost.num))[7,5], digits=3) )) +
+  annotate(geom = "text", x=1.9, y=4.4, size = 6,
+           label = paste("Est. =",
+                         round( coef(summary(i.prepost.num))[7,1], digits=3) ))
+#the scale of the actual datapoints goes up to 5000 epg (or 2000 if you remove one point) and messes with the plot
+  # geom_jitter(data=witheggs2021FEC.num, aes(x=pre_post, y=nematode.epg, color=helm_trt),
+  #             width=0.1, height=0.05,
+  #             size=3, alpha=0.2, shape=16)
+
+
+
+
+
+
 
 
 
@@ -129,7 +297,8 @@ AIC(pm1, pm2, pm3, pm4, pm5) #m2 and m3 are best and equivalent
 
 #add occasion, sex, and season_breeder (best)
 p.prepost <- glmer(nematode.y.n ~ helm_trt + pre_post + helm_trt:pre_post + occasion + sex + season_breeder + (1|tag),
-                   data = all2021FEC, family = binomial) #n=1031
+                   data = all2021FEC, family = binomial,
+                   glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))) #n=1031
 summary(p.prepost) #b=-0.55645, p=0.05048.
 
 ############# presence GLMM model diagnostics ############
@@ -140,8 +309,8 @@ simulationOutput <- simulateResiduals(fittedModel = p.prepost)
 plot(simulationOutput) #qq plot and residual vs fitted
 testDispersion(simulationOutput) #formal test for overdispersion
 testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
-plotResiduals(simulationOutput, data$deworm)
-plotResiduals(simulationOutput, data$pre_post)
+plotResiduals(simulationOutput, all2021FEC$deworm)
+plotResiduals(simulationOutput, all2021FEC$pre_post)
 #### OVERALL: DHARMa looks good #####
 
 
@@ -222,55 +391,88 @@ plot_ranef(i.prepost) #also dece
 ###########################################################################################
 ###### here is another thing that didn't really work, developed with S Budischak ##########
 ###########################################################################################
-# #### tried running models with worm abundance (combo of presence and intensity)
-# #### P * I = A
-# #### and with Poisson and NegBinomial error families (to deal with non-normality of data)
-#
-# ## Result: Significant effect of deworm*prepost in the Poisson model
-#         ## no effect of deworm*prepost in negative binomial models
-#         ## and the neg bin models have much better fit than the Poisson
-# ## so not a great option because it doesn't prove what we want :(
-#
-# library(glmmTMB)
-#
-# #create a parameter for worm abundance, needs to be integer, thus the *10
-# #glmmTMB also requires the predictor (ie tag) to be a factor
-# all2021FEC <- all2021FEC %>%
-#   mutate(worms = round( (log(nematode.epg+1))*10, 0 )) %>%
-#   mutate(tagfac = as.factor(tag))
-#
-# hist(all2021FEC$worms) #fairly Poisson
-#
-# #worms is an ABUNDANCE variable now - "at the population scale, how infected is each population?"
-# #Prev*Intensity = Abundance
-#   #FEWER infected animals AND infected animals have LOWER intensity
-#   #and this happens AFTER deworming
-# mpois <- glmmTMB(worms ~ helm_trt + pre_post + occasion + helm_trt:pre_post + (1|tag),
-#                          data=all2021FEC, ziformula=~1, family=poisson)
-#
-# mnbin1 <- glmmTMB(worms ~ helm_trt + pre_post + occasion + helm_trt:pre_post + (1|tag),
-#                          data=all2021FEC, ziformula=~1, family=nbinom1)
-#
-# mnbin2 <- glmmTMB(worms ~ helm_trt + pre_post + occasion + helm_trt:pre_post + (1|tag),
-#                          data=all2021FEC, ziformula=~1, family=nbinom2)
-#
-# summary(mpois) #signif effect of occasion and deworm*prepost
-# summary(mnbin1) #no signif effects
-# summary(mnbin2) #no signif effects
-# #strange that there's no effect of deworming or occasion in these models.. l
-#   #makes Sarah wonder if they're actually fitting properly
-#
-# #model diagnostics
-# plot(resid(mpois, type="pearson") ~ fitted(mpois))
-# plot(resid(mnbin1, type="pearson") ~ fitted(mnbin1)) #looks a little better than mpois
-# plot(resid(mnbin2, type="pearson") ~ fitted(mnbin2)) #looks a little better than mpois
-#
-# qqnorm(resid(mpois, type="pearson"))
-# qqnorm(resid(mnbin1, type="pearson")) #looks a little better than mpois
-# qqnorm(resid(mnbin2, type="pearson")) #looks a little better than mpois
-#
-# library(lmtest) #basically AIC for non normal distribution models
-# lrtest(mpois, mnbin2) #still shows that negbin models are better than poisson
+#### tried running models with worm abundance (combo of presence and intensity)
+#### P * I = A
+#### and with Poisson and NegBinomial error families (to deal with non-normality of data)
+
+## Result: Significant effect of deworm*prepost in the Poisson model
+        ## no effect of deworm*prepost in negative binomial models
+        ## and the neg bin models have much better fit than the Poisson
+## so not a great option because it doesn't prove what we want :(
+
+library(glmmTMB)
+
+#create a parameter for worm abundance, needs to be integer, thus the *10
+#glmmTMB also requires the predictor (ie tag) to be a factor
+all2021FEC <- newFEC %>%
+  mutate(worms = round( (log(nematode.epg+1))*10, 0 )) %>%
+  mutate(tagfac = as.factor(tag))
+
+hist(all2021FEC$worms) #fairly Poisson
+
+#worms is an ABUNDANCE variable now - "at the population scale, how infected is each population?"
+#Prev*Intensity = Abundance
+  #FEWER infected animals AND infected animals have LOWER intensity
+  #and this happens AFTER deworming
+mpois <- glmmTMB(worms ~ helm_trt + pre_post + occasion + sex + season_breeder + helm_trt:pre_post + (1|tag),
+                 control=glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")),
+                         data=all2021FEC, ziformula=~1, family=poisson)
+
+mnbin1 <- glmmTMB(worms ~ helm_trt + pre_post + occasion + sex + season_breeder + helm_trt:pre_post + (1|tag),
+                  control=glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")),
+                         data=all2021FEC, ziformula=~1, family=nbinom1)
+
+mnbin2 <- glmmTMB(worms ~ helm_trt + pre_post + occasion + sex + season_breeder + helm_trt:pre_post + (1|tag),
+                         data=all2021FEC, ziformula=~1, family=nbinom2)
+
+
+summary(mpois) #signif effect of occasion and deworm*prepost
+summary(mnbin1) #no signif effects
+summary(mnbin2) #no signif effects
+#strange that there's no effect of deworming or occasion in these models.. l
+  #makes Sarah wonder if they're actually fitting properly
+
+#save it
+tab_model(mpois, file="abundance_model_poisson.doc")
+
+
+#model diagnostics
+plot(resid(mpois, type="pearson") ~ fitted(mpois))
+plot(resid(mnbin1, type="pearson") ~ fitted(mnbin1)) #looks a little better than mpois
+plot(resid(mnbin2, type="pearson") ~ fitted(mnbin2)) #looks a little better than mpois
+
+qqnorm(resid(mpois, type="pearson"))
+qqnorm(resid(mnbin1, type="pearson")) #looks a little better than mpois
+qqnorm(resid(mnbin2, type="pearson")) #looks a little better than mpois
+
+library(lmtest) #basically AIC for non normal distribution models
+lrtest(mpois, mnbin1, mnbin2) #still shows that negbin models are better than poisson
+
+
+
+
+############# presence GLMM model diagnostics ############
+#GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
+library(DHARMa)
+#calculate residuals (then run diagnostics on these)
+simulationOutput <- simulateResiduals(fittedModel = mpois)
+simulationOutput <- simulateResiduals(fittedModel = mnbin1)
+simulationOutput <- simulateResiduals(fittedModel = mnbin2)
+plot(simulationOutput) #qq plot and residual vs fitted
+testDispersion(simulationOutput) #formal test for overdispersion
+testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
+plotResiduals(simulationOutput, all2021FEC$helm_trt)
+plotResiduals(simulationOutput, all2021FEC$pre_post)
+plotResiduals(simulationOutput, all2021FEC$sex)
+plotResiduals(simulationOutput, all2021FEC$season_breeder)
+plotResiduals(simulationOutput, all2021FEC$occasion)
+#### OVERALL: DHARMa looks good #####
+
+
+
+
+
+
 ###########################################################################################
 
 
