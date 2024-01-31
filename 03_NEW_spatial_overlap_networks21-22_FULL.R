@@ -163,10 +163,10 @@ for(i in 1:length(overlap_network_list)) {
 
   for(j in 1:length(overlap_network_list[[i]])){
 
-    data <- overlap_network_list[[12]][[4]]
+    data <- overlap_network_list[[9]][[4]]
 
-    site.id <- names(overlap_network_list[12])
-    month.id <- names(overlap_network_list[[12]][4])
+    site.id <- names(overlap_network_list[9])
+    month.id <- names(overlap_network_list[[9]][4])
 
     ## **PLOTTING FROM TIDYGRAPH OBJECT
     #metadata to get sex for node color
