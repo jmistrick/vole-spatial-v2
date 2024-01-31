@@ -7,6 +7,7 @@ library(igraph)
 library(lubridate)
 library(janitor)
 library(ggforce) #for geom_circle in ggplot
+library(cowplot)
 
 #clear environment
 rm(list = ls())
@@ -110,7 +111,7 @@ y21 <- readRDS(here("params21_STSB.rds")) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
   mutate(area = 2*pi*(rad_0.01^2)) %>%
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-  group_by(season, breeder, helmtrt) %>%
+  group_by(season, sex, breeder) %>%
   summarize(mean = mean(area),
             sd = sd(area))
 
@@ -152,6 +153,57 @@ table <- rbind(readRDS(here("params21_STSB.rds")), readRDS(here("params22_STSB.r
   group_by(season, breeder, sex) %>%
   summarize(mean = mean(area),
             sd = sd(area))
+
+
+### PLOT mean HR SIZE by functional group, trt, year ####
+####### NEW FIGURE NOV 2023 jesus creepers and rice, why am I still working on this####
+#mean area each year by trt, sex, breed
+params21 <- params21 %>% mutate(year=2021)
+params22 <- params22 %>% mutate(year=2022)
+
+data <- rbind(params21, params22) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  mutate(area = 2*pi*(rad_0.01^2)) %>%
+  mutate(area = area*10) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  unite(fxnl, sex, breeder) %>%
+  group_by(year, season, trt, fxnl) %>%
+  summarize(mean = mean(area),
+            sd = sd(area)) %>%
+  mutate(season = factor(season, levels=c("summer", "fall"))) %>%
+  mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
+                                    "fed_control", "fed_deworm")))
+
+trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
+                          "unfed_deworm" = "Unfed-Deworm",
+                          "fed_control" = "Fed-Control",
+                          "fed_deworm" = "Fed-Deworm"))
+year.labs <- as_labeller(c("2021" = "2021",
+                          "2022" = "2022"))
+
+png(filename = here("spaceuse21-22_volehantaFig1.png"), height=6, width = 11, units = "in", res=600)
+ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=data) +
+  geom_jitter(size=4, width=0.15) +
+  scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
+  scale_shape_manual(values=c(19, 1, 17, 2),
+                     labels=c("Female Breeder", "Female Nonbreeder", "Male Breeder", "Male Nonbreeder")) +
+  scale_color_manual(values = c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A"),
+                     name = "Treatment",
+                     labels = c("Unfed-Control", "Unfed-Deworm", "Fed-Control",  "Fed-Deworm")) +
+  facet_grid(year ~ trt, labeller = labeller(trt=trt.labs, year=year.labs)) +
+  labs(y = paste("Mean Space Use", "(m\u00B2)"), x=NULL, shape="Functional Group") +
+  guides(color="none") +
+  theme_bw() +
+  theme(strip.text = element_text(size=16),
+        axis.title.y = element_text(size=16, margin=margin(0,20,0,0)),
+        axis.text = element_text(size=14, color="#808080"),
+        legend.text = element_text(size=13),
+        legend.title = element_text(size=14),
+        legend.position = "bottom")
+dev.off()
+
+
 
 
 #############################################
@@ -368,7 +420,7 @@ library(gridExtra)
 
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("ERRBODYcircles_monthlycentroids_", "rad0.01_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("~ERRBODYcircles_monthlycentroids_", "rad0.01_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -381,11 +433,12 @@ for(i in 1:length(circles21_list)) {
     p[[j]] <- data %>%
       ggplot() +
       geom_point(aes(x=x, y=y, color=sex), show.legend=FALSE) +
-      xlim(-2,14) + ylim(-2,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=sex), alpha=0.5) +
+      xlim(-1.5,13) + ylim(-1.5,13) +
+      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=sex, linetype=season_breeder), alpha=0.5) +
       scale_fill_manual(values=c("#f282a780", "#00d0ff80")) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
-                fill=NA, alpha = 0.4, color = "black", linetype=2) +
+                fill=NA, alpha = 0.4, color = "#444444", linetype=2) +
+      theme_void() +
       theme(legend.position = "bottom",
             axis.ticks = element_blank(),
             axis.text  = element_blank(),
